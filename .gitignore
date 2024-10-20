@@ -1,0 +1,6 @@
+CMakeLists.txt.user
+
+# Python temp / cache data:
+*.npy
+*.pth
+*.pyc
