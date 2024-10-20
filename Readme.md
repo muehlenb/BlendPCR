@@ -1,4 +1,4 @@
-# BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras (Real-Time)
+# BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds (Real-Time)
 ### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | [Paper](https://link_to_eg_digital_library)
  
 ![image](images/teaser.jpg)
@@ -11,7 +11,7 @@ C++/OpenGL implementation of our real-time renderer for dynamic point clouds fro
  - **CMake** ≥ 3.5
  - **OpenGL** ≥ 3.3
  - **Azure Kinect SDK** 1.41
- - **nlohmann_json**
+ - **nlohmann/json**
  
 ## Installation
 TODO
