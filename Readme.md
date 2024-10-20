@@ -1,4 +1,4 @@
-# BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds (Real-Time)
+# BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
 ### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | [Paper](https://link_to_eg_digital_library)
  
 ![image](images/teaser.jpg)
