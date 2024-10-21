@@ -97,7 +97,7 @@ set(DEFAULT_SOURCES
 set(RESOURCES
 )
 # Allow to include files directly in this paths (without the need to specify folders):
-include_directories(src src/util/math lib/stb_image lib/tiny_obj_loader)
+include_directories(src src/util/math lib lib/stb_image lib/tiny_obj_loader)
 
 set(HEADERS ${DEFAULT_HEADERS})
 set(SOURCES ${DEFAULT_SOURCES})

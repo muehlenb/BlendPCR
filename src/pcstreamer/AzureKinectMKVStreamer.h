@@ -35,10 +35,9 @@ public:
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrameTime;
 
-    AzureKinectMKVStreamer(){
-        //std::string rootPath = "C:\\Users\\Andre\\Downloads\\dataset_hierarchy\\dataset_hierarchy\\cwipc-sxr-dataset\\s13_card_trick\\r1_t1\\";
-        std::string rootPath = "D:\\Arbeit\\dataset_hierarchy\\cwipc-sxr-dataset\\s18_boxing\\r1_t1\\";
-        std::string cameraConfigPath = rootPath + "cameraconfig.json";
+    AzureKinectMKVStreamer(std::string cameraConfigPath){
+        // Erhalte den enthaltenden Ordner (parent path)
+        std::string rootPath = std::filesystem::path(cameraConfigPath).parent_path().string() + "/";
 
         std::ifstream f(cameraConfigPath);
         json jfile = json::parse(f);
@@ -142,6 +141,16 @@ public:
             }
         });
     }
+
+    /**
+     * Join and destroy reading thread on deconstruction.
+     */
+    ~AzureKinectMKVStreamer(){
+        shouldStop = true;
+        if(readingThread.joinable())
+            readingThread.join();
+    }
+
     /**
      * Steps a frame forward. If the parameter 'frameDelta' is given, it steps
      * the number of frames forward (or backward, when negative).

@@ -5,17 +5,14 @@
 
 #include "src/pcstreamer/AzureKinectMKVStreamer.h"
 
-const char* Streamer::availableStreamerNames[] = { "Azure Kinect (MKV)"};
+const char* Streamer::availableStreamerNames[] = { "- No streamer selected -", "Azure Kinect (MKV)"};
 
-const unsigned int Streamer::availableStreamerNum = 1;
+const unsigned int Streamer::availableStreamerNum = 2;
 
-std::shared_ptr<Streamer> Streamer::constructStreamerInstance(int type){
-    if(type == 0){
-        return std::make_shared<AzureKinectMKVStreamer>();
+std::shared_ptr<Streamer> Streamer::constructStreamerInstance(int type, std::string filepath){
+    if(type == 1){
+        return std::make_shared<AzureKinectMKVStreamer>(filepath);
     }
-
-    if(type >= 0 && type < int(sizeof(availableStreamerNames)))
-        std::cout << "Created " << availableStreamerNames[type] << std::endl;
 
     return nullptr;
 };

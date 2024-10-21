@@ -46,7 +46,7 @@ public:
      * Constructs a PCStreamer object with a streamer of the given type
      * (which corresponds to the index of getAvailableNames()).
      */
-    static std::shared_ptr<Streamer> constructStreamerInstance(int type);
+    static std::shared_ptr<Streamer> constructStreamerInstance(int type, std::string path = "");
 
     /**
      * Returns the CPU processing time in milliseconds per read frame of

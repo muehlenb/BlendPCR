@@ -49,6 +49,8 @@
 // PC Filter:
 #include "src/pcfilter/Filter.h"
 
+#include <imfilebrowser.h>
+
 #include <chrono>
 using namespace std::chrono;
 
@@ -150,8 +152,10 @@ int main(int argc, char** argv)
     float integrationTime = 0.f;
 
     // Streamer:
-    int pcStreamerItemIdx = -1;
+    int pcStreamerItemIdx = 0;
     int pcStreamerLoadedIdx = -1;
+
+    int pcStreamerOfCurrentFileDialog = -1;
     std::shared_ptr<Streamer> pcStreamer;
 
     // Fusion / Renderer:
@@ -159,13 +163,7 @@ int main(int argc, char** argv)
     int pcTechniqueLoadedIdx = -1;
     std::shared_ptr<Renderer> pcRenderer;
 
-    // TSDF Fusion Init params:
-    int pcTSDFFusionDim = 512;
-    float pcTSDFFusionSideLength = 2.f;
     bool shouldClose = false;
-
-    // Attention Renderer:
-    int attRenFlowRows = 288;
 
     //
     Semaphore integratePCSemaphore(1);
@@ -255,11 +253,12 @@ int main(int argc, char** argv)
     //
     GLCoordinateSystem coordinateSystem;
 
-    bool trainAttention = true;
-    bool trainOther = true;
-
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    ImGui::FileBrowser fileDialog;
+    fileDialog.SetTitle("title");
+    fileDialog.SetTypeFilters({ ".json" });
 
     // Main loop which is executed every frame until the window is closed:
     while (!glfwWindowShouldClose(window))
@@ -351,13 +350,27 @@ int main(int argc, char** argv)
             {
                 // Update streamer if changed:
                 if(pcStreamerItemIdx != pcStreamerLoadedIdx){
-                    pcStreamer = Streamer::constructStreamerInstance(pcStreamerItemIdx);
+                    if(pcStreamerItemIdx > 0){
+                        pcStreamerOfCurrentFileDialog = pcStreamerItemIdx;
+                        pcStreamerItemIdx = pcStreamerLoadedIdx;
+                        fileDialog.Open();
+                    } else {
+                        pcStreamer = nullptr;
+                        pcStreamerLoadedIdx = pcStreamerItemIdx;
+                    }
+                }
+
+                fileDialog.Display();
+
+                if(fileDialog.HasSelected())
+                {
+                    pcStreamer = Streamer::constructStreamerInstance(pcStreamerOfCurrentFileDialog, fileDialog.GetSelected().string());
                     if(pcStreamer != nullptr)
                         pcStreamer->setCallback(streamerCallback);
-                    pcStreamerLoadedIdx = pcStreamerItemIdx;
+                    pcStreamerItemIdx = pcStreamerLoadedIdx = pcStreamerOfCurrentFileDialog;
+                    fileDialog.ClearSelected();
                 }
             }
-
 
             ImGui::Separator();
             if(ImGui::CollapsingHeader("Filter", ImGuiTreeNodeFlags_DefaultOpen)){
@@ -433,112 +446,6 @@ int main(int argc, char** argv)
                     ImGui::Checkbox("Use Indices as Color##2", &pcBlendedMeshFusion->useColorIndices);
                 }
 
-#ifdef USE_CUDA
-                std::shared_ptr<TSDFMarchingCubesRenderer> pcTSDFFusion = std::dynamic_pointer_cast<TSDFMarchingCubesRenderer>(pcRenderer);
-                if(pcTSDFFusion != nullptr){
-                    ImGui::TextWrapped("Generating a TSDF volume from the depth images and triangulate it using marching cubes (both implemented in CUDA).");
-                    ImGui::Separator();
-                    ImGui::Text("");
-                    ImGui::Separator();
-                    ImGui::Text("Settings:");
-                    ImGui::Separator();
-                    ImGui::Text("Volume Params (per Dimension):");
-                    ImGui::DragInt("Voxels", &pcTSDFFusionDim, 1.f, 32, 256);
-                    ImGui::DragFloat("Length", &pcTSDFFusionSideLength, 0.1f, 0.5f, 4.0f);
-
-                    if(pcTSDFFusionDim != pcTSDFFusion->xDim || abs(pcTSDFFusionSideLength - pcTSDFFusion->xDim*pcTSDFFusion->voxelSize) > 0.01f){
-                        if(pcTSDFFusionDim >= 32 && pcTSDFFusionSideLength > 0.01f){
-                            pcRenderer = std::make_shared<TSDFMarchingCubesRenderer>(pcTSDFFusionDim, pcTSDFFusionDim, pcTSDFFusionDim, pcTSDFFusionSideLength / pcTSDFFusionDim);
-                            integratePCSemaphore.acquire();
-                            pcRenderer->integratePointClouds(lastProcessedPointClouds);
-                            integratePCSemaphore.release();
-                        }
-                    }
-                }
-#endif
-
-#ifdef USE_TORCH
-                std::shared_ptr<TemPCCRenderer> tempccRenderer = std::dynamic_pointer_cast<TemPCCRenderer>(pcRenderer);
-                if(tempccRenderer != nullptr){
-                    ImGui::TextWrapped("Experimental TemPCCRenderer.");
-                    ImGui::Separator();
-                    ImGui::Text("");
-                    ImGui::Separator();
-                    ImGui::Text("Settings:");
-
-                    ImGui::Separator();
-
-                    ImGui::SliderInt("Flow Precision", &attRenFlowRows, 36, 288);
-
-                    attRenFlowRows = (18 * (2 << int(std::round(std::log2(attRenFlowRows / 18)) - 1)));
-
-                    if(attRenFlowRows != tempccRenderer->flowRows){
-                        pcRenderer = std::make_shared<TemPCCRenderer>(attRenFlowRows);
-                        integratePCSemaphore.acquire();
-                        pcRenderer->integratePointClouds(lastProcessedPointClouds);
-                        integratePCSemaphore.release();
-                    }
-                    float learningRate = -std::log10(tempccRenderer->learningRate);
-                    ImGui::SliderFloat("Learning Rate (1^-x)", &learningRate, 3, 10);
-                    tempccRenderer->learningRate = std::pow(10, -learningRate);
-                    ImGui::Checkbox("Use Attention Layer", &tempccRenderer->nativeModule.attention_enabled);
-                    ImGui::Checkbox("Train Attention", &trainAttention);
-                    ImGui::Checkbox("Train Other", &trainOther);
-                    tempccRenderer->updateLearningEnabled(trainAttention, trainOther);
-                    ImGui::SliderFloat("Scheduled Sampling (LSTM)", &tempccRenderer->scheduledSampling, 0, 1);
-                    ImGui::SliderFloat("Allowed Training Div:", &tempccRenderer->allowedTrainingDivergence, 0, 1);
-                    ImGui::Separator();
-                    ImGui::Text("ValidTrainingNum: \t %u", tempccRenderer->validTrainingNum);
-                    ImGui::Text("Training Offset: \t %u", tempccRenderer->currentTrainingOffset);
-
-                    ImGui::Separator();
-                    ImGui::Checkbox("Render Result", &tempccRenderer->shouldRender);
-                    ImGui::SliderFloat("Point Size", &tempccRenderer->pointSize, 1.f, 40.0f);
-                    ImGui::Checkbox("Draw Only Hidden Points", &tempccRenderer->onlyDrawHiddenPoints);
-                    ImGui::Checkbox("Draw Only Visible Points", &tempccRenderer->onlyDrawVisiblePoints);
-                    ImGui::Checkbox("Draw Lifetime Color", &tempccRenderer->drawLifeTimeColor);
-                    ImGui::Checkbox("Draw 3D Flow", &tempccRenderer->drawFlow);
-                    ImGui::Checkbox("Draw Ground Truth", &tempccRenderer->drawGTData);
-                    ImGui::Checkbox("Use PDFlow", &tempccRenderer->usePDFlow);
-                    ImGui::SliderInt("EveryNCamPoint", &tempccRenderer->everyNCamPoint, 1, 8);
-                    ImGui::Checkbox("ApplyFlow", &tempccRenderer->applyFlow);
-
-                    ImGui::Separator();
-                    ImGui::Checkbox("Show Cam 1", &tempccRenderer->showCam1);
-                    ImGui::Checkbox("Show Cam 2", &tempccRenderer->showCam2);
-                    ImGui::Checkbox("Show Cam 3", &tempccRenderer->showCam3);
-
-                    ImGui::Separator();
-
-                    ImGui::Checkbox("Colorize Hidden Points", &tempccRenderer->colorizeHiddenPoints);
-                    ImGui::Separator();
-                    if(ImGui::Button("Load")){
-                        tempccRenderer->loadNet();
-                    }
-                    ImGui::SameLine();
-                    if(ImGui::Button("Save")){
-                        tempccRenderer->saveNet();
-                    }
-                    ImGui::Separator();
-                    ImGui::Checkbox("Should Train", &tempccRenderer->shouldTrain);
-                    ImGui::Checkbox("Write Training Data", &tempccRenderer->shouldStoreTrainingData);
-                    ImGui::Separator();
-                    ImGui::Text("Valid Cam Points: \t %u", tempccRenderer->validCamPointsNum);
-                    ImGui::Text("Total Points: \t\t\t  %u", tempccRenderer->validPointsNum);
-                    ImGui::Text("Last Loss: \t\t\t  %f", tempccRenderer->lastLoss);
-                    ImGui::Separator();
-
-                    if(ImGui::Button("Clear Points")){
-                        tempccRenderer->clearPointsInNextFrame = true;
-                    }
-                    ImGui::Separator();
-
-                    std::map<std::string, float> timeMeasures = tempccRenderer->getTimings();
-                    for (const auto &elem : timeMeasures) {
-                        ImGui::Text((elem.first+": %.3f ms").c_str(), elem.second);
-                    }
-                }
-#endif
                 ImGui::Separator();
                 ImGui::Text("");
                 ImGui::Separator();
@@ -553,22 +460,6 @@ int main(int argc, char** argv)
                         pcRenderer->integratePointClouds(lastProcessedPointClouds);
                     pcTechniqueLoadedIdx = pcTechniqueItemIdx;
                     integratePCSemaphore.release();
-
-#ifdef USE_CUDA
-                    // Reinitialize Initialization params (syncronize):
-                    std::shared_ptr<TSDFMarchingCubesRenderer> pcTSDFFusion = std::dynamic_pointer_cast<TSDFMarchingCubesRenderer>(pcRenderer);
-                    if(pcTSDFFusion != nullptr){
-                        pcTSDFFusionDim = pcTSDFFusion->xDim;
-                        pcTSDFFusionSideLength = pcTSDFFusion->voxelSize * pcTSDFFusion->xDim;
-                    }
-#endif
-
-#ifdef USE_TORCH
-                    std::shared_ptr<TemPCCRenderer> tempccRenderer = std::dynamic_pointer_cast<TemPCCRenderer>(pcRenderer);
-                    if(tempccRenderer != nullptr){
-                        attRenFlowRows = tempccRenderer->flowRows;
-                    }
-#endif
                 }
             }
 
@@ -595,21 +486,6 @@ int main(int argc, char** argv)
                 ImGui::Text("https://cgvr.cs.uni-bremen.de");
             }
 
-
-            /*
-            std::shared_ptr<BlendedMeshRenderer> pcBlendedMeshFusion = std::dynamic_pointer_cast<BlendedMeshRenderer>(pcRenderer);
-            std::shared_ptr<SimpleMeshRenderer> pcSimpleMeshRenderer = std::dynamic_pointer_cast<SimpleMeshRenderer>(pcRenderer);
-            std::shared_ptr<SplatRenderer> pcSplatRenderer = std::dynamic_pointer_cast<SplatRenderer>(pcRenderer);
-            if(pcBlendedMeshFusion != nullptr){
-                std::cout << worldCPUTime << "," << worldGPUTime << "," << integrationTime << "," << pcBlendedMeshFusion->uploadTime << std::endl;
-            } else if(pcSimpleMeshRenderer != nullptr){
-                std::cout << worldCPUTime << "," << worldGPUTime << "," << integrationTime << "," << pcSimpleMeshRenderer->uploadTime << std::endl;
-            } else if(pcSplatRenderer != nullptr){
-                std::cout << worldCPUTime << "," << worldGPUTime << "," << integrationTime << "," << pcSplatRenderer->uploadTime << std::endl;
-            } else {
-                std::cout << worldCPUTime << "," << worldGPUTime << "," << integrationTime << "," << 0.0f << std::endl;
-            }*/
-
             ImGui::Separator();
 
             bool isOpenTmp = isImGuiDemoWindowOpen;
@@ -617,9 +493,7 @@ int main(int argc, char** argv)
                 ImGui::PushStyleColor(ImGuiCol_Button, IMGUI_BUTTONCOL_DISABLED);
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IMGUI_BUTTONCOL_DISABLED_HOVER);
             }
-            //if(ImGui::Button("Open ImGui Demo Window", ImVec2(ImGui::GetContentRegionAvail().x, 24))){
-            //    isImGuiDemoWindowOpen = !isImGuiDemoWindowOpen;
-            //}
+
             if(isOpenTmp){
                 ImGui::PopStyleColor(2);
             }
