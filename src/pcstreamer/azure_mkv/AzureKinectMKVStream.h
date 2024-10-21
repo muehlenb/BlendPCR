@@ -66,19 +66,6 @@ class AzureKinectMKVStream {
                 buffer[index + 3] = (b >> 8) & 0xFF;
             }
         }
-
-        for(int y = 0; y < 1536; y += 15){
-            for(int x = 0; x < 32; x += 15){
-                int idx = (y * width + x) * 4;
-
-                std::cout << int(buffer[idx + 0]) << " ";
-
-                //std::cout << "(" << (int(buffer[idx + 0]) + (int(buffer[idx + 3]) << 8)) << ", " << int(buffer[idx + 1]) << ", " << int(buffer[idx + 2]) << ") ";
-            }
-            std::cout << std::endl;
-        }
-
-
     }
 
 public:
