@@ -5,7 +5,7 @@
 
 #include "src/pcstreamer/AzureKinectMKVStreamer.h"
 
-const char* Streamer::availableStreamerNames[] = { "- No streamer selected -", "Azure Kinect (MKV)"};
+const char* Streamer::availableStreamerNames[] = { "- No streamer selected -", "CWIPC-SXR (Streamed)", "CWIPC-SXR (Buffered)"};
 
 const unsigned int Streamer::availableStreamerNum = 2;
 

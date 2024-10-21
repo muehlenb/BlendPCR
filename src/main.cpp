@@ -98,7 +98,7 @@ int main(int argc, char** argv)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     // Create window with graphics context:
-    GLFWwindow* window = glfwCreateWindow(860, 560, "BlendPCR (GUI): Lite Version of PCRFramework", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1600, 900, "BlendPCR (GUI): Lite Version of PCRFramework", NULL, NULL);
     if (window == NULL)
         return 1;
 
@@ -337,12 +337,16 @@ int main(int argc, char** argv)
 
                     ImGui::Checkbox("Realtime (Skip Frames)", &pcFileStreamer->allowFrameSkipping);
                     ImGui::Checkbox("Loop", &pcFileStreamer->loop);
+                    ImGui::Separator();
                 }
-                ImGui::Separator();
 
                 std::shared_ptr<AzureKinectMKVStreamer> pcAzureKinectMKVStreamer = std::dynamic_pointer_cast<AzureKinectMKVStreamer>(pcStreamer);
                 if(pcAzureKinectMKVStreamer != nullptr){
                     ImGui::Checkbox("Use Indices as Color", &pcAzureKinectMKVStreamer->useColorIndices);
+                    if(ImGui::Button("Load new Scene"))
+                        fileDialog.Open();
+                } else {
+                    ImGui::TextWrapped("Please select \"Source\" to load a scene.");
                 }
 
                 ImGui::Separator();

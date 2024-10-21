@@ -486,7 +486,7 @@ public:
     float kernelRadius = 10.f;
     float kernelSpread = 1.f;
 
-    bool useColorIndices = true;
+    bool useColorIndices = false;
 
     float uploadTime = 0;
 
@@ -566,7 +566,7 @@ public:
             }
 
             std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-            {
+            if(currentPC->highResColors != nullptr){
                 glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
                 glTexSubImage2D(GL_TEXTURE_2D,  0, 0, 0, 2048, 1536, GL_RGBA, GL_UNSIGNED_BYTE, currentPC->highResColors);
             }

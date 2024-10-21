@@ -31,7 +31,7 @@ public:
     float debugOffsetY = 0.f;
     float debugOffsetZ = 0.f;
 
-    bool useColorIndices = true;
+    bool useColorIndices = false;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrameTime;
 

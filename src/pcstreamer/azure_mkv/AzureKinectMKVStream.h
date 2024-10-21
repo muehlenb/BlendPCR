@@ -192,38 +192,6 @@ public:
         return allTimestamps[frame];
     }
 
-
-    void print_image_format(k4a_image_t image) {
-        k4a_image_format_t format = k4a_image_get_format(image);
-
-        switch (format) {
-        case K4A_IMAGE_FORMAT_COLOR_MJPG:
-            std::cout << "Image format: MJPEG" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_COLOR_NV12:
-            std::cout << "Image format: NV12" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_COLOR_YUY2:
-            std::cout << "Image format: YUY2" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_COLOR_BGRA32:
-            std::cout << "Image format: BGRA32" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_DEPTH16:
-            std::cout << "Image format: Depth 16" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_IR16:
-            std::cout << "Image format: IR 16" << std::endl;
-            break;
-        case K4A_IMAGE_FORMAT_CUSTOM:
-            std::cout << "Image format: Custom" << std::endl;
-            break;
-        default:
-            std::cout << "Unknown image format" << std::endl;
-            break;
-        }
-    }
-
     void createLookupTables(){
         lookupTable3DToImage = new float[LOOKUP_TABLE_SIZE * LOOKUP_TABLE_SIZE * 2];
 
@@ -285,18 +253,20 @@ public:
 
 
     std::shared_ptr<OrganizedPointCloud> syncImage(double timeStamp){
-        // Seek to timestamp:
-        k4a_result_t seek_result = k4a_playback_seek_timestamp(playback_handle, uint64_t(timeStamp * 1000000), K4A_PLAYBACK_SEEK_BEGIN);
-        if (seek_result != K4A_RESULT_SUCCEEDED)
-        {
-            return nullptr;
-        }
-
+        double specificTimestep = 0.f;
         for(int i=0; i < allTimestamps.size(); ++i){
-            if(timeStamp - 0.016f < allTimestamps[i]){
+            if(timeStamp - 0.0166f < allTimestamps[i]){
+                specificTimestep = allTimestamps[i];
                 currentFrame = i;
                 break;
             }
+        }
+
+        // Seek to timestamp:
+        k4a_result_t seek_result = k4a_playback_seek_timestamp(playback_handle, uint64_t(specificTimestep * 1000000), K4A_PLAYBACK_SEEK_BEGIN);
+        if (seek_result != K4A_RESULT_SUCCEEDED)
+        {
+            return nullptr;
         }
 
         // Read capture:
@@ -304,6 +274,7 @@ public:
         if (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED) {
             k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
             k4a_image_t color_image = k4a_capture_get_color_image(capture);
+
             k4a_image_t transformed_color_image;
 
             if (depth_image != nullptr && color_image != nullptr) {
@@ -316,30 +287,13 @@ public:
                 int highres_height = k4a_image_get_height_pixels(color_image);
 
                 // Create highres texture:
-                if(highres_width == 2048 && highres_height == 1536){
+                if(highres_width == 2048 && highres_height == 1536 && useColorIndices){
                     uint8_t* buffer = k4a_image_get_buffer(color_image);
 
                     pc->highResColors = new Vec4b[highres_width * highres_height];
                     pc->highResWidth = highres_width;
                     pc->highResHeight = highres_height;
                     std::memcpy(pc->highResColors, buffer, highres_width * highres_height * sizeof(Vec4b));
-
-                    /*
-                    for(int y = 0; y < highres_height; y += 245){
-                        for(int x = 0; x < highres_width; x += 243){
-                            int idx = (y * highres_width + x) * 4;
-                            std::cout << x << " x " << y << ": " << int(buffer[idx]) << "," << int(buffer[idx+1]) << "," << int(buffer[idx+2]) << std::endl;
-                        }
-                    }*/
-
-                    /*
-                    glGenTextures(1, &pc->glHighResTexture);
-                    glBindTexture(GL_TEXTURE_2D, pc->glHighResTexture);
-                    std::cout << "GenTexture: " << pc->glHighResTexture << std::endl;
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-*/
                 }
 
                 k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32, width, height, width * 4 * sizeof(uint8_t), &transformed_color_image);
@@ -353,16 +307,6 @@ public:
                     k4a_capture_release(capture);
                     return nullptr;
                 }
-
-                /*
-
-                uint8_t* tbuffer = k4a_image_get_buffer(transformed_color_image);
-                for(int y = 0; y < 576; y += 35){
-                    for(int x = 0; x < 640; x += 41){
-                        int idx = (y * 640 + x) * 4;
-                        std::cout << x << " x " << y << ": " << int(tbuffer[idx]) << ", " << int(tbuffer[idx+1]) << ", " << int(tbuffer[idx+2]) << ", " << int(tbuffer[idx+3]) << std::endl;
-                    }
-                }*/
 
                 k4a_image_t pcimg;
                 if (k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM, width, height, width * 3 * (int)sizeof(int16_t),&pcimg) != K4A_RESULT_SUCCEEDED){
@@ -409,8 +353,6 @@ public:
                 k4a_image_release(color_image);
                 k4a_capture_release(capture);
                 return pc;
-            } else {
-                //std::cerr << "No color image available in this capture." << std::endl;
             }
         }
         return nullptr;
