@@ -4,7 +4,7 @@
 [Andre Mühlenbrock](https://orcid.org/0000-0002-7836-3341), [Rene Weller](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann](https://orcid.org/0000-0001-8155-1127)\
 Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
 
-This is our C++/OpenGL implementation of a real-time renderer BlendPCR, optimized for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
+This is the C++/OpenGL implementation of our real-time renderer BlendPCR, optimized for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
 ![image](images/teaser.jpg)
 
