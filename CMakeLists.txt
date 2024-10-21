@@ -1,7 +1,14 @@
 # Define the minimum CMAKE version required:
 cmake_minimum_required(VERSION 3.5)
 
-project(BlendPCR CXX)
+option(USE_CUDA "Enable CUDA" OFF)
+
+if(USE_CUDA)
+    project(BlendPCR CUDA CXX)
+else()
+    project(BlendPCR CXX)
+endif()
+
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -93,6 +100,31 @@ set(DEFAULT_SOURCES
     src/util/OrganizedPointCloud.cpp
 )
 
+
+# When CUDA 12.1 is enabled:
+if(USE_CUDA)
+    if(NOT USE_CUDA)
+        # CUDA Lambda device functions:
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda")
+    endif()
+
+    # CUDA:
+    find_package(CUDAToolkit 12.1 REQUIRED)
+
+    # CUDA headers:
+    set(CUDA_HEADERS
+        src/pcfilter/SpatialHoleFiller.h
+        src/pcfilter/ErosionFilter.h
+        src/pcfilter/ClippingFilter.h
+    )
+
+    set(CUDA_SOURCES
+        src/pcfilter/SpatialHoleFiller.cu
+        src/pcfilter/ErosionFilter.cu
+        src/pcfilter/ClippingFilter.cu
+    )
+endif()
+
 # Define shader & resources which should be listed in IDE:
 set(RESOURCES
 )
@@ -101,6 +133,11 @@ include_directories(src src/util/math lib lib/stb_image lib/tiny_obj_loader)
 
 set(HEADERS ${DEFAULT_HEADERS})
 set(SOURCES ${DEFAULT_SOURCES})
+
+if(USE_CUDA)
+    list(APPEND HEADERS ${CUDA_HEADERS})
+    list(APPEND SOURCES ${CUDA_SOURCES})
+endif()
 
 list(APPEND SOURCES src/main.cpp)
 
@@ -114,6 +151,12 @@ target_compile_definitions(BlendPCR PUBLIC -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DI
 
 target_link_libraries(BlendPCR PUBLIC imgui glad)
 
+if(USE_CUDA)
+    target_compile_definitions(BlendPCR PRIVATE USE_CUDA)
+    target_include_directories(BlendPCR PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+    target_link_libraries(BlendPCR PRIVATE ${CUDA_LIBRARIES})
+endif()
+
 target_compile_definitions(BlendPCR PRIVATE USE_KINECT)
 
 # Azure Kinect libraries
@@ -125,6 +168,3 @@ target_link_libraries(BlendPCR PRIVATE nlohmann_json::nlohmann_json)
 
 # OpenMP
 target_link_libraries(BlendPCR PUBLIC OpenMP::OpenMP_CXX)
-
-# Precompiled Header konfigurieren
-target_precompile_headers(BlendPCR PRIVATE)

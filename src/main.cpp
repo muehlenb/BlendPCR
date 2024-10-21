@@ -49,6 +49,12 @@
 // PC Filter:
 #include "src/pcfilter/Filter.h"
 
+#ifdef USE_CUDA
+#include "src/pcfilter/ErosionFilter.h"
+#include "src/pcfilter/SpatialHoleFiller.h"
+#include "src/pcfilter/ClippingFilter.h"
+#endif
+
 #include <imfilebrowser.h>
 
 #include <chrono>
@@ -174,14 +180,12 @@ int main(int argc, char** argv)
     // Filters:
     std::vector<std::shared_ptr<Filter>> pcFilters;
     #ifdef USE_CUDA
-        // Filters:
-        //std::shared_ptr<ClippingFilter> clippingFilter = std::make_shared<ClippingFilter>();
-        //pcFilters.push_back(clippingFilter);
-
+        std::shared_ptr<ClippingFilter> clippingFilter = std::make_shared<ClippingFilter>();
+        pcFilters.push_back(clippingFilter);
         std::shared_ptr<SpatialHoleFiller> holeFiller = std::make_shared<SpatialHoleFiller>();
-        //pcFilters.push_back(holeFiller);
+        pcFilters.push_back(holeFiller);
         std::shared_ptr<ErosionFilter> erosionFilter = std::make_shared<ErosionFilter>();
-        //pcFilters.push_back(erosionFilter);
+        pcFilters.push_back(erosionFilter);
     #endif
 
     Semaphore pointCloudsAvailableSemaphore;
@@ -538,17 +542,11 @@ int main(int argc, char** argv)
                     std::string name = "Unknown";
 #ifdef USE_CUDA
                     std::shared_ptr<ClippingFilter> clippingFilter = std::dynamic_pointer_cast<ClippingFilter>(filter);
-                    std::shared_ptr<TemporalNoiseFilter> temporalNoiseFilter = std::dynamic_pointer_cast<TemporalNoiseFilter>(filter);
-                    std::shared_ptr<TemporalHoleFiller> temporalHoleFiller = std::dynamic_pointer_cast<TemporalHoleFiller>(filter);
                     std::shared_ptr<SpatialHoleFiller> spatialHoleFiller = std::dynamic_pointer_cast<SpatialHoleFiller>(filter);
                     std::shared_ptr<ErosionFilter> erosionFilter = std::dynamic_pointer_cast<ErosionFilter>(filter);
 
                     if(clippingFilter != nullptr)
                         name = "Clipping (in World Space)";
-                    else if(temporalNoiseFilter != nullptr)
-                        name = "Temporal Noise Filter";
-                    else if(temporalHoleFiller != nullptr)
-                        name = "Temporal Hole Filler";
                     else if(spatialHoleFiller != nullptr)
                         name = "Spatial Hole Filler";
                     else if(erosionFilter != nullptr)
@@ -592,13 +590,6 @@ int main(int argc, char** argv)
                             ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &clippingFilter->isActive);
                             ImGui::DragFloat3("Min", &clippingFilter->min.x, 0.02f, -3.f, 0.f);
                             ImGui::DragFloat3("Max", &clippingFilter->max.x, 0.02f, 0.f, 3.f);
-                        }
-                        if(temporalNoiseFilter != nullptr){
-                            ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &temporalNoiseFilter->isActive);
-                            ImGui::SliderFloat("Smoothing", &temporalNoiseFilter->smoothFactor, 0.f, 1.f);
-                        }
-                        if(temporalHoleFiller != nullptr){
-                            ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &temporalHoleFiller->isActive);
                         }
 
                         if(spatialHoleFiller != nullptr){
