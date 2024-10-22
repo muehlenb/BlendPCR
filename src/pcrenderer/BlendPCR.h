@@ -37,7 +37,7 @@ class BlendPCR : public Renderer {
     // The textures for the input point clouds:
     unsigned int texture2D_inputVertices[CAMERA_COUNT];
     unsigned int texture2D_inputRGB[CAMERA_COUNT];
-    unsigned int texture2D_inputLookup3DToImage[CAMERA_COUNT];
+    unsigned int texture2D_inputLookupImageTo3D[CAMERA_COUNT];
 
     // The fbo and texture for the rejection pass:
     unsigned int fbo_rejection[CAMERA_COUNT];
@@ -359,8 +359,8 @@ class BlendPCR : public Renderer {
                 // Input color texture
                 generateAndBind2DTexture(texture2D_inputRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
 
-                // Input lookup table GL_NEAREST
-                generateAndBind2DTexture(texture2D_inputLookup3DToImage[cameraID], LOOKUP_IMAGE_SIZE, LOOKUP_IMAGE_SIZE, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
+                // Input lookup table
+                generateAndBind2DTexture(texture2D_inputLookupImageTo3D[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_NEAREST);
             }
 
             /**
@@ -604,12 +604,12 @@ public:
                 }
 
                 std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-                if(currentPC->lookup3DToImage != nullptr){
-                    glBindTexture(GL_TEXTURE_2D, texture2D_inputLookup3DToImage[cameraID]);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, currentPointClouds[cameraID]->lookup3DToImageSize, currentPointClouds[cameraID]->lookup3DToImageSize, GL_RG, GL_FLOAT, currentPC->lookup3DToImage);
+                if(currentPC->lookupImageTo3D != nullptr){
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, currentPointClouds[cameraID]->width, currentPointClouds[cameraID]->height, GL_RG, GL_FLOAT, currentPC->lookupImageTo3D);
+                    lookupTablesUploaded = true;
                 }
             }
-            lookupTablesUploaded = true;
         }
         endTimeMeasure("1d) Lookup");
         //endTimeMeasure("1) UploadTextures");
@@ -633,6 +633,10 @@ public:
                     glActiveTexture(GL_TEXTURE2);
                     glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
                     pcfHoleFillingShader.setUniform("inputColors", 2);
+
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
+                    pcfHoleFillingShader.setUniform("lookupImageTo3D", 3);
 
                     glBindVertexArray(VAO_quad);
                     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -795,7 +799,7 @@ public:
         // Just for switching for paper images:
         // bool merge = GlobalStateHandler::instance().rightBarViewModel()->debug_showRays();
 
-        glEnable(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
         // Now we render all meshes of each depth camera to a framebuffer:

@@ -148,11 +148,11 @@ int main(int argc, char** argv)
 
     // These variables sum the mouse movements in x and y direction
     // while the mouse was pressed in window coordinates (i.e. pixels):
-    float viewPositionX = float(M_PI * 0.9);
+    float viewPositionX = -float(M_PI * 0.2);
     float viewPositionY = -0.2f;
-    float viewDistance = 2.0f;
+    float viewDistance = 2.6f;
 
-    Vec4f viewTarget(0, 0.7f, 0);
+    Vec4f viewTarget(0, 0.9f, 0);
 
     // Opened windows:
     bool isFilterWindowOpen = false;
@@ -453,6 +453,10 @@ int main(int argc, char** argv)
                     ImGui::SliderFloat("Kernel Spread", &pcBlendPCRenderer->kernelSpread, 1.f, 5.f);
                     ImGui::Separator();
                     ImGui::Checkbox("Use Indices as Color##2", &pcBlendPCRenderer->useColorIndices);
+                    ImGui::Separator();
+                    ImGui::Text("");
+                    ImGui::Separator();
+                    ImGui::Checkbox("Reimpl. Filters", &pcBlendPCRenderer->useReimplementedFilters);
                 }
 
                 ImGui::Separator();
