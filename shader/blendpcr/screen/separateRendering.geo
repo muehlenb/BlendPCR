@@ -19,28 +19,28 @@ out vec3 fNormal;
 out vec2 fTexCoord;
 
 void main() {
-	// Filter all triangles where vertices contains invalid pixels in 
-	// a-kernel texture:
-	for(int i=0; i<3; ++i)
-		if(length(vCamPos[i].xyz) < 0.01)
-			return;
+    // Filter all triangles where vertices contains invalid pixels in
+    // a-kernel texture:
+    for(int i=0; i<3; ++i)
+        if(length(vCamPos[i].xyz) < 0.01)
+            return;
 
-	// Filter all triangles where vertices contains invalid pixels in
-	// edge distance texture:
-	for(int i=0; i<3; ++i)
-		if(vEdgeDistance[i] > 0.99)
-			return;
+    // Filter all triangles where vertices contains invalid pixels in
+    // edge distance texture:
+    for(int i=0; i<3; ++i)
+        if(vEdgeDistance[i] > 0.99)
+            return;
 		
     for(int i=0; i<3; i++)
     {
-		gl_Position = gl_in[i].gl_Position;
-		fColor = vColor[i];
-		fPos = vPos[i];
-		fEdgeDistance = vEdgeDistance[i];
-		fPosAlpha = vCamPosAlpha[i];
-		fNormal = vNormal[i];
-		fTexCoord = vTexCoord[i];
-		EmitVertex();
+        gl_Position = gl_in[i].gl_Position;
+        fColor = vColor[i];
+        fPos = vPos[i];
+        fEdgeDistance = vEdgeDistance[i];
+        fPosAlpha = vCamPosAlpha[i];
+        fNormal = vNormal[i];
+        fTexCoord = vTexCoord[i];
+        EmitVertex();
     }
 	
     EndPrimitive();
