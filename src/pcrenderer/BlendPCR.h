@@ -354,12 +354,12 @@ class BlendPCR : public Renderer {
             // Generate resources for INPUT
             {
                 // Input point cloud texture
-                generateAndBind2DTexture(texture2D_inputVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_inputVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
 
                 // Input color texture
                 generateAndBind2DTexture(texture2D_inputRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
 
-                // Input lookup table texture
+                // Input lookup table GL_NEAREST
                 generateAndBind2DTexture(texture2D_inputLookup3DToImage[cameraID], LOOKUP_IMAGE_SIZE, LOOKUP_IMAGE_SIZE, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
             }
 
@@ -370,7 +370,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_pcf_erosion[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
 
-                generateAndBind2DTexture(texture2D_pcf_erosion[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_pcf_erosion[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_erosion[cameraID], 0);
             }
 
@@ -381,7 +381,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_pcf_holeFilling[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
 
-                generateAndBind2DTexture(texture2D_pcf_holeFilledVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_pcf_holeFilledVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID], 0);
 
                 generateAndBind2DTexture(texture2D_pcf_holeFilledRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
@@ -434,7 +434,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_qualityEstimate[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
 
-                generateAndBind2DTexture(texture2D_qualityEstimate[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_qualityEstimate[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID], 0);
             }
 
@@ -449,7 +449,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_mls[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
 
-                generateAndBind2DTexture(texture2D_mlsVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_mlsVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_mlsVertices[cameraID], 0);
             }
 
@@ -463,7 +463,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_normals[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
 
-                generateAndBind2DTexture(texture2D_normals[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                generateAndBind2DTexture(texture2D_normals[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_normals[cameraID], 0);
             }
 

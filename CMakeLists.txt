@@ -137,6 +137,12 @@ set(RESOURCES
     shader/simple_mesh/simpleMesh.geo
     shader/simple_mesh/simpleMesh.frag
 
+    shader/blendpcr/filter/erosion.vert
+    shader/blendpcr/filter/erosion.frag
+
+    shader/blendpcr/filter/holeFilling.vert
+    shader/blendpcr/filter/holeFilling.frag
+
     shader/blendpcr/pointcloud/rejection.vert
     shader/blendpcr/pointcloud/rejection.frag
 
