@@ -35,7 +35,7 @@ After choosing your preferred mode, a file dialog will appear, prompting you to 
 
 ## Remarks
 ### Point Cloud Filters via CUDA
-In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer utilized the same set of CUDA-implemented filters: *ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*, located in the `src/pcfilter/` folder. These filters are enabled by default when the project is compiled with CUDA support.
+In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer utilized the same set of CUDA-implemented filters: *ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*, located in the `src/pcfilter/` folder. These filters are enabled by default when the project is compiled with CUDA support (I.e. if `USE_CUDA` is set to `ON` in the CMAKE configuration).
 
 For scenarios where CUDA is not used, we have implemented *SpatialHoleFiller* and *ErosionFilter* as an initial GLSL pass in the `BlendPCR`, which is automatically activated when CUDA is disabled during the build process. This way, we are able to achieve the same visual quality even without CUDA. It is important to note that without CUDA, both the SplatRenderer and Simple Mesh Renderer may exhibit lower visual quality than that demonstrated in our paper, even if the BlendPCR renderer is as presented in the paper.
 
