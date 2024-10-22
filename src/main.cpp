@@ -314,7 +314,7 @@ int main(int argc, char** argv)
             ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 
             ImGui::Separator();
-            if(ImGui::CollapsingHeader("Source", ImGuiTreeNodeFlags_DefaultOpen)){
+            if(ImGui::CollapsingHeader("Source Mode", ImGuiTreeNodeFlags_DefaultOpen)){
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 ImGui::Combo("##1", &pcStreamerItemIdx, Streamer::availableStreamerNames, Streamer::availableStreamerNum);
