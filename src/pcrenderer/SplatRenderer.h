@@ -15,7 +15,7 @@ class SplatRenderer : public Renderer {
     std::vector<std::shared_ptr<OrganizedPointCloud>> currentPointClouds;
 
     // Splat shader:
-    Shader splatShader = Shader(CMAKE_SOURCE_DIR "/shader/splats.vert", CMAKE_SOURCE_DIR "/shader/splats.frag");
+    Shader splatShader = Shader(CMAKE_SOURCE_DIR "/shader/splats/splats.vert", CMAKE_SOURCE_DIR "/shader/splats/splats.frag");
     Shader singleColorShader = Shader(CMAKE_SOURCE_DIR "/shader/singleColorShader.vert", CMAKE_SOURCE_DIR "/shader/singleColorShader.frag");
 
     // Pointer to Vertex Array Object (on GPU):

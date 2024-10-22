@@ -127,6 +127,16 @@ endif()
 
 # Define shader & resources which should be listed in IDE:
 set(RESOURCES
+    shader/singleColorShader.vert
+    shader/singleColorShader.frag
+
+    shader/splats/splats.vert
+    shader/splats/splats.frag
+
+    shader/simple_mesh/simpleMesh.vert
+    shader/simple_mesh/simpleMesh.geo
+    shader/simple_mesh/simpleMesh.frag
+
     shader/blendpcr/pointcloud/rejection.vert
     shader/blendpcr/pointcloud/rejection.frag
 

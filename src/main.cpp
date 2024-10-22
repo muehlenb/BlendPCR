@@ -442,7 +442,7 @@ int main(int argc, char** argv)
 
                 std::shared_ptr<BlendPCR> pcBlendPCRenderer = std::dynamic_pointer_cast<BlendPCR>(pcRenderer);
                 if(pcBlendPCRenderer != nullptr){
-                    ImGui::TextWrapped("The renderer presented in the paper 'BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras'");
+                    ImGui::TextWrapped("The renderer presented in our paper 'BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras'");
                     ImGui::Separator();
                     ImGui::Text("");
                     ImGui::Separator();
@@ -487,8 +487,8 @@ int main(int argc, char** argv)
             if(ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)){
                 ImGui::Text("Computergraphics and Virtual Reality");
                 ImGui::Text("University of Bremen");
-                ImGui::Text("");
-                ImGui::Text("https://cgvr.cs.uni-bremen.de");
+                ImGui::Separator();
+                ImGui::Text("By Andre Mühlenbrock");
             }
 
             ImGui::Separator();

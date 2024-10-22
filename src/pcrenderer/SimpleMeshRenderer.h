@@ -13,7 +13,7 @@ class SimpleMeshRenderer : public Renderer {
     std::vector<std::shared_ptr<OrganizedPointCloud>> currentPointClouds;
 
     // Splat shader:
-    Shader simpleMeshShader = Shader(CMAKE_SOURCE_DIR "/shader/simpleMesh.vert", CMAKE_SOURCE_DIR "/shader/simpleMesh.frag", CMAKE_SOURCE_DIR "/shader/simpleMesh.geo");
+    Shader simpleMeshShader = Shader(CMAKE_SOURCE_DIR "/shader/simple_mesh/simpleMesh.vert", CMAKE_SOURCE_DIR "/shader/simple_mesh/simpleMesh.frag", CMAKE_SOURCE_DIR "/shader/simple_mesh/simpleMesh.geo");
 
     // Pointer to Vertex Array Object (on GPU):
     GLuint vao = 0;
