@@ -1,3 +1,6 @@
+// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
+
 #version 330 core
 
 #define CAMERA_NUM 7
@@ -20,23 +23,20 @@ uniform int cameraID = -1;
 out vec2 FragResult;
 
 float easeInOut(float x){
-	return 3*x*x + 2*x*x*x;
+    return 3*x*x + 2*x*x*x;
 }
 
 
 void main()
 {		
-	float maxCamDist = 6.0;
+    float maxCamDist = 6.0;
 
-	vec3 point = texture(vertices[cameraID], vScreenPos).xyz;
-	vec3 normal = texture(normals[cameraID], vScreenPos).xyz;
-	float edgeProximity = texture(edgeDistances[cameraID], vScreenPos).r;
-	
-	float camDist = clamp(length(point), 0.0, maxCamDist);
-	
-	//Irgendwie dafür sorgen, dass möglichst immer nur eine Kamera relevant ist, indem Gewicht nichtlinear skaliert wird!!!!
-	
-	float distFactor = (maxCamDist * maxCamDist - camDist * camDist)/36 * clamp(dot(normalize(normal), normalize(point)), 0.1, 1.0);
-	
-	FragResult = vec2(distFactor, easeInOut(clamp(1.0-edgeProximity,0.0,1.0)));
+    vec3 point = texture(vertices[cameraID], vScreenPos).xyz;
+    vec3 normal = texture(normals[cameraID], vScreenPos).xyz;
+    float edgeProximity = texture(edgeDistances[cameraID], vScreenPos).r;
+
+    float camDist = clamp(length(point), 0.0, maxCamDist);
+    float distFactor = (maxCamDist * maxCamDist - camDist * camDist)/36 * clamp(dot(normalize(normal), normalize(point)), 0.1, 1.0);
+
+    FragResult = vec2(distFactor, easeInOut(clamp(1.0-edgeProximity,0.0,1.0)));
 }

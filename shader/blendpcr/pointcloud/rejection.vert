@@ -6,7 +6,7 @@ out vec2 texCoord;
 
 void main()
 {
-	texCoord = vInPos.xy * 0.5 + 0.5;
+    texCoord = vInPos.xy * 0.5 + 0.5;
     gl_Position = vec4(vInPos.xy, 0.5, 1.0);
 
 }
