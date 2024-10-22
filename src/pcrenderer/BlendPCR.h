@@ -25,6 +25,15 @@ class BlendPCR : public Renderer {
      */
     unsigned int highres_colors[CAMERA_COUNT];
 
+    // Reimplemented point cloud filter (Hole Filling):
+    unsigned int fbo_pcf_holeFilling[CAMERA_COUNT];
+    unsigned int texture2D_pcf_holeFilledVertices[CAMERA_COUNT];
+    unsigned int texture2D_pcf_holeFilledRGB[CAMERA_COUNT];
+
+    // Reimplemented point cloud filter (Erosion):
+    unsigned int fbo_pcf_erosion[CAMERA_COUNT];
+    unsigned int texture2D_pcf_erosion[CAMERA_COUNT];
+
     // The textures for the input point clouds:
     unsigned int texture2D_inputVertices[CAMERA_COUNT];
     unsigned int texture2D_inputRGB[CAMERA_COUNT];
@@ -75,6 +84,13 @@ class BlendPCR : public Renderer {
     bool lookupTablesUploaded = false;
 
     std::vector<unsigned int> usedCameraIDs;
+
+    /**
+     * Define all the shaders for the reimplemented point cloud filters
+     * (originally CUDA implemented):
+     */
+    Shader pcfHoleFillingShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/filter/holeFilling.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/filter/holeFilling.frag");
+    Shader pcfErosionShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/filter/erosion.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/filter/erosion.frag");
 
     /**
      * Define all the shaders for the point cloud processing passes:
@@ -348,6 +364,31 @@ class BlendPCR : public Renderer {
             }
 
             /**
+             * Generate resources for reimplemented EROSION FILTER (orig. CUDA implemented).
+             */
+            {
+                glGenFramebuffers(1, &fbo_pcf_erosion[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
+
+                generateAndBind2DTexture(texture2D_pcf_erosion[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_erosion[cameraID], 0);
+            }
+
+            /**
+             * Generate resources for reimplemented HOLE FILLING FILTER (orig. CUDA implemented).
+             */
+            {
+                glGenFramebuffers(1, &fbo_pcf_holeFilling[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
+
+                generateAndBind2DTexture(texture2D_pcf_holeFilledVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID], 0);
+
+                generateAndBind2DTexture(texture2D_pcf_holeFilledRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2D_pcf_holeFilledRGB[cameraID], 0);
+            }
+
+            /**
              * Generate resources for REJECTION PASS.
              *
              * This pass calculates whether a vertex is valid or not
@@ -355,17 +396,12 @@ class BlendPCR : public Renderer {
              *
              * A red-value of 0 means valid, 1 means invalid.
              */
-
             {
                 glGenFramebuffers(1, &fbo_rejection[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejection[cameraID]);
 
                 generateAndBind2DTexture(texture2D_rejection[cameraID], imageWidth, imageHeight, GL_RED, GL_RED, GL_UNSIGNED_BYTE, GL_LINEAR);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_rejection[cameraID], 0);
-
-                TextureFBO({
-                    TextureType(GL_RED, GL_RED, GL_UNSIGNED_BYTE)
-                });
             }
 
             /**
@@ -379,7 +415,6 @@ class BlendPCR : public Renderer {
              * Vertices which are more than [kernelRadius] units away from
              * invalid pixels get the value 0.
              */
-
             {
                 glGenFramebuffers(1, &fbo_edgeProximity[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeProximity[cameraID]);
@@ -388,7 +423,6 @@ class BlendPCR : public Renderer {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_edgeProximity[cameraID], 0);
             }
 
-
             /**
              * Generate resources for QUALITY ESTIMATE PASS.
              *
@@ -396,7 +430,6 @@ class BlendPCR : public Renderer {
              * this camera. The first output value is the quality estimate,
              * the second output is the edge proximity.
              */
-
             {
                 glGenFramebuffers(1, &fbo_qualityEstimate[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
@@ -405,7 +438,6 @@ class BlendPCR : public Renderer {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID], 0);
             }
 
-
             /**
              * MLS PASS: Generate frame buffer and render texture.
              *
@@ -413,7 +445,6 @@ class BlendPCR : public Renderer {
              * squares kernel while being weighted with the edgeProximity
              * (to smooth the edges).
              */
-
             {
                 glGenFramebuffers(1, &fbo_mls[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
@@ -428,7 +459,6 @@ class BlendPCR : public Renderer {
              * Calculates normals for the vertices using cholesky, eigenvalues,
              * and so on.
              */
-
             {
                 glGenFramebuffers(1, &fbo_normals[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
@@ -445,6 +475,8 @@ class BlendPCR : public Renderer {
     }
 
 public:
+    bool useReimplementedFilters = true;
+
     float implicitH = 0.01f;
     float kernelRadius = 10.f;
     float kernelSpread = 1.f;
@@ -582,6 +614,53 @@ public:
         endTimeMeasure("1d) Lookup");
         //endTimeMeasure("1) UploadTextures");
 
+
+        if(useReimplementedFilters){
+            startTimeMeasure("2a) Hole Filling Pass", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // Hole Filling Pass:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
+                    pcfHoleFillingShader.bind();
+
+                    unsigned int hfattachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+                    glDrawBuffers(2, hfattachments);
+
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
+                    pcfHoleFillingShader.setUniform("inputVertices", 1);
+
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
+                    pcfHoleFillingShader.setUniform("inputColors", 2);
+
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
+            }
+            endTimeMeasure("2a) Hole Filling Pass", true);
+
+            startTimeMeasure("2a) Erosion Pass", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // Erosion Pass:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
+                    pcfErosionShader.bind();
+
+                    unsigned int eattachments[1] = { GL_COLOR_ATTACHMENT0};
+                    glDrawBuffers(1, eattachments);
+
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID]);
+                    pcfErosionShader.setUniform("inputVertices", 1);
+
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
+            }
+            endTimeMeasure("2a) Hole Filling Pass", true);
+        }
+
         startTimeMeasure("2a) RejectedPass", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Rejected PASS:
@@ -590,7 +669,7 @@ public:
                 rejectionShader.bind();
 
                 glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
+                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
                 rejectionShader.setUniform("pointCloud", 1);
 
                 glActiveTexture(GL_TEXTURE2);
@@ -635,7 +714,7 @@ public:
                 mlsShader.setUniform("p_h", implicitH);
 
                 glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
+                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
                 mlsShader.setUniform("pointCloud", 1);
 
                 glActiveTexture(GL_TEXTURE2);
@@ -668,7 +747,7 @@ public:
                 normalsShader.setUniform("texture2D_edgeProximity", 2);
 
                 glActiveTexture(GL_TEXTURE3);
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
+                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
                 normalsShader.setUniform("texture2D_inputVertices", 3);
 
                 glBindVertexArray(VAO_quad);
@@ -684,41 +763,18 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
                 qualityEstimateShader.bind();
 
-                unsigned int currentTexture = 1;
-                for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
-                    glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraIDOfTexture]);
-                    qualityEstimateShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                    ++currentTexture;
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                    qualityEstimateShader.setUniform("vertices", 0);
 
-                    glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraIDOfTexture]);
-                    qualityEstimateShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                    ++currentTexture;
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
+                    qualityEstimateShader.setUniform("normals", 1);
 
-                    glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_inputLookup3DToImage[cameraIDOfTexture]);
-                    qualityEstimateShader.setUniform("lookup["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                    ++currentTexture;
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                    qualityEstimateShader.setUniform("edgeDistances", 2);
 
-                    glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraIDOfTexture]);
-                    qualityEstimateShader.setUniform("edgeDistances["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                    ++currentTexture;
-
-
-                    Mat4f fromCurrentCam = currentPointClouds[cameraIDOfTexture]->modelMatrix.inverse() * currentPointClouds[cameraID]->modelMatrix;
-
-                    qualityEstimateShader.setUniform("fromCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam);
-                    qualityEstimateShader.setUniform("toCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam.inverse());
-                }
-
-                for(int i=0; i < CAMERA_COUNT; ++i){
-                    qualityEstimateShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
-                }
-
-                qualityEstimateShader.setUniform("useFusion", useFusion);
-                qualityEstimateShader.setUniform("cameraID", int(cameraID));
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -762,7 +818,7 @@ public:
             renderShader.setUniform("useColorIndices", useColorIndices);
 
             glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
+            glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
             renderShader.setUniform("texture2D_colors", 2);
 
             glActiveTexture(GL_TEXTURE3);

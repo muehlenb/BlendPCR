@@ -3,22 +3,12 @@
 
 #version 330 core
 
-#define CAMERA_NUM 7
-
 in vec2 vScreenPos;
 
-uniform sampler2D vertices[CAMERA_NUM];
-uniform sampler2D normals[CAMERA_NUM];
-uniform sampler2D edgeDistances[CAMERA_NUM];
-uniform sampler2D lookup[CAMERA_NUM];
+uniform sampler2D vertices;
+uniform sampler2D normals;
+uniform sampler2D edgeDistances;
 
-uniform mat4 fromCurrentCam[CAMERA_NUM]; // previously: cam1ToCam2
-uniform mat4 toCurrentCam[CAMERA_NUM]; // previously: cam2ToCam1
-
-uniform bool isCameraActive[CAMERA_NUM];
-
-uniform bool useFusion = false;
-uniform int cameraID = -1;
 
 out vec2 FragResult;
 
@@ -31,9 +21,9 @@ void main()
 {		
     float maxCamDist = 6.0;
 
-    vec3 point = texture(vertices[cameraID], vScreenPos).xyz;
-    vec3 normal = texture(normals[cameraID], vScreenPos).xyz;
-    float edgeProximity = texture(edgeDistances[cameraID], vScreenPos).r;
+    vec3 point = texture(vertices, vScreenPos).xyz;
+    vec3 normal = texture(normals, vScreenPos).xyz;
+    float edgeProximity = texture(edgeDistances, vScreenPos).r;
 
     float camDist = clamp(length(point), 0.0, maxCamDist);
     float distFactor = (maxCamDist * maxCamDist - camDist * camDist)/36 * clamp(dot(normalize(normal), normalize(point)), 0.1, 1.0);
