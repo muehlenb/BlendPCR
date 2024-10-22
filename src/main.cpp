@@ -44,7 +44,7 @@
 #include "src/pcrenderer/Renderer.h"
 #include "src/pcrenderer/SimpleMeshRenderer.h"
 #include "src/pcrenderer/SplatRenderer.h"
-#include "src/pcrenderer/BlendedMeshRenderer.h"
+#include "src/pcrenderer/BlendPCR.h"
 
 // PC Filter:
 #include "src/pcfilter/Filter.h"
@@ -159,7 +159,6 @@ int main(int argc, char** argv)
     bool isImGuiDemoWindowOpen = false;
 
     // Rendering timer
-    float worldGPUTime = 0.f;
     float worldCPUTime = 0.f;
 
     // Time which is required for apply the filters:
@@ -280,12 +279,6 @@ int main(int argc, char** argv)
     {
         auto frameStartTime = high_resolution_clock::now();
 
-
-        // Start measuring time:
-        GLuint timingQuery;
-        glGenQueries(1, &timingQuery);
-        glBeginQuery(GL_TIME_ELAPSED, timingQuery);
-
         // Processes all glfw events:
         glfwPollEvents();
 
@@ -359,11 +352,8 @@ int main(int argc, char** argv)
                 } else {
                     ImGui::TextWrapped("Please select \"Source\" to load a scene.");
                 }
-
                 ImGui::Separator();
-
                 ImGui::Text("");
-
             }
 
             {
@@ -450,19 +440,19 @@ int main(int argc, char** argv)
                     ImGui::Checkbox("Discard Black Pixels", &pcSimpleMeshRenderer->discardBlackPixels);
                 }
 
-                std::shared_ptr<BlendedMeshRenderer> pcBlendedMeshFusion = std::dynamic_pointer_cast<BlendedMeshRenderer>(pcRenderer);
-                if(pcBlendedMeshFusion != nullptr){
+                std::shared_ptr<BlendPCR> pcBlendPCRenderer = std::dynamic_pointer_cast<BlendPCR>(pcRenderer);
+                if(pcBlendPCRenderer != nullptr){
                     ImGui::TextWrapped("The renderer presented in the paper 'BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras'");
                     ImGui::Separator();
                     ImGui::Text("");
                     ImGui::Separator();
                     ImGui::Text("Settings:");
                     ImGui::Separator();
-                    ImGui::SliderFloat("Gauss H", &pcBlendedMeshFusion->implicitH, 0.001f, 0.08f);
-                    ImGui::SliderFloat("Kernel Radius", &pcBlendedMeshFusion->kernelRadius, 3, 15);
-                    ImGui::SliderFloat("Kernel Spread", &pcBlendedMeshFusion->kernelSpread, 1.f, 5.f);
+                    ImGui::SliderFloat("Gauss H", &pcBlendPCRenderer->implicitH, 0.001f, 0.08f);
+                    ImGui::SliderFloat("Kernel Radius", &pcBlendPCRenderer->kernelRadius, 3, 15);
+                    ImGui::SliderFloat("Kernel Spread", &pcBlendPCRenderer->kernelSpread, 1.f, 5.f);
                     ImGui::Separator();
-                    ImGui::Checkbox("Use Indices as Color##2", &pcBlendedMeshFusion->useColorIndices);
+                    ImGui::Checkbox("Use Indices as Color##2", &pcBlendPCRenderer->useColorIndices);
                 }
 
                 ImGui::Separator();
@@ -489,16 +479,12 @@ int main(int argc, char** argv)
                 ImGui::Separator();
                 ImGui::Text("Integration: %.3f ms", integrationTime);
                 ImGui::Separator();
-                ImGui::Text("CPU Render Time: %.3f ms", worldCPUTime);
-                ImGui::Text("GL Render Time: %.3f ms", worldGPUTime);
+                ImGui::Text("Render Loop (synced): %.3f ms", worldCPUTime);
             }
 
             ImGui::Text("");
             ImGui::Separator();
             if(ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)){
-                ImGui::Text("By Andre Mühlenbrock");
-                ImGui::Text("");
-                ImGui::Text("Implemented at CGVR Research Lab:");
                 ImGui::Text("Computergraphics and Virtual Reality");
                 ImGui::Text("University of Bremen");
                 ImGui::Text("");
@@ -697,7 +683,7 @@ int main(int argc, char** argv)
         }
 
         // End measuring time:
-        glEndQuery(GL_TIME_ELAPSED);
+        // glEndQuery(GL_TIME_ELAPSED);
 
         for(std::shared_ptr<OrganizedPointCloud> pc : lastProcessedPointClouds){
              // Camera:
@@ -713,26 +699,21 @@ int main(int argc, char** argv)
 
 
         // Wait until time is available:
-        int resultAvailable = 0;
-        while (!resultAvailable) {
-            glGetQueryObjectiv(timingQuery, GL_QUERY_RESULT_AVAILABLE, &resultAvailable);
-        }
+        // int resultAvailable = 0;
+        // while (!resultAvailable) {
+        //     glGetQueryObjectiv(timingQuery, GL_QUERY_RESULT_AVAILABLE, &resultAvailable);
+        // }
 
         // Render the GUI and draw it to the screen:
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        // Rendering time:
-        GLuint64 time = 0;
-        glGetQueryObjectui64v(timingQuery, GL_QUERY_RESULT, &time);
-        worldGPUTime = (time / 1000000.f);// * 0.1f + worldGPUTime * 0.9f;
-
-        // Delete queries:
-        glDeleteQueries(1,&timingQuery);
+        // Ensure all GL Commands are finished before measure time:
+        glFinish();
 
         // Measure time (before swap):
         long long frameDuration = duration_cast<microseconds>(high_resolution_clock::now() - frameStartTime).count();
-        worldCPUTime = (frameDuration *0.001f);//(frameDuration *0.001f) * 0.1f + worldCPUTime * 0.9f;
+        worldCPUTime = (frameDuration *0.001f) * 0.1f + worldCPUTime * 0.9f;
 
         // Swap Buffers (waits for vsync (?)):
         glfwSwapBuffers(window);

@@ -15,7 +15,7 @@ using namespace std::chrono;
 #define CAMERA_IMAGE_HEIGHT 576
 #define LOOKUP_IMAGE_SIZE 1024
 
-class BlendedMeshRenderer : public Renderer {
+class BlendPCR : public Renderer {
     std::vector<std::shared_ptr<OrganizedPointCloud>> currentPointClouds;
 
     bool isInitialized = false;
@@ -23,48 +23,48 @@ class BlendedMeshRenderer : public Renderer {
     /**
      * Declares all FBOs and textures which we need.
      */
-
     unsigned int highres_colors[CAMERA_COUNT];
 
+    // The textures for the input point clouds:
     unsigned int texture2D_inputVertices[CAMERA_COUNT];
     unsigned int texture2D_inputRGB[CAMERA_COUNT];
     unsigned int texture2D_inputLookup3DToImage[CAMERA_COUNT];
 
-    unsigned int fbo_fusionPC[CAMERA_COUNT];
-    unsigned int texture2D_fusionVertices[CAMERA_COUNT];
-    unsigned int texture2D_fusionNormals[CAMERA_COUNT];
+    // The fbo and texture for the rejection pass:
+    unsigned int fbo_rejection[CAMERA_COUNT];
+    unsigned int texture2D_rejection[CAMERA_COUNT];
 
-    unsigned int fbo_aKernel[CAMERA_COUNT];
-    unsigned int texture2D_aKernel[CAMERA_COUNT];
+    // The fbo and texture for the edge proximity pass:
+    unsigned int fbo_edgeProximity[CAMERA_COUNT];
+    unsigned int texture2D_edgeProximity[CAMERA_COUNT];
 
-    unsigned int fbo_nKernel[CAMERA_COUNT];
-    unsigned int texture2D_nKernel[CAMERA_COUNT];
+    // The fbo and texture for the mls pass:
+    unsigned int fbo_mls[CAMERA_COUNT];
+    unsigned int texture2D_mlsVertices[CAMERA_COUNT];
 
-    unsigned int fbo_rejected[CAMERA_COUNT];
-    unsigned int texture2D_rejected[CAMERA_COUNT];
+    // The fbo and texture for the normal estimation pass:
+    unsigned int fbo_normals[CAMERA_COUNT];
+    unsigned int texture2D_normals[CAMERA_COUNT];
 
-    unsigned int fbo_edgeNearness[CAMERA_COUNT];
-    unsigned int texture2D_edgeNearness[CAMERA_COUNT];
+    // The fbo and texture for the quality estimation pass:
+    unsigned int fbo_qualityEstimate[CAMERA_COUNT];
+    unsigned int texture2D_qualityEstimate[CAMERA_COUNT];
 
-    unsigned int fbo_overlap[CAMERA_COUNT];
-    unsigned int texture2D_overlap[CAMERA_COUNT];
-
-    unsigned int fbo_overlapWeight[CAMERA_COUNT];
-    unsigned int texture2D_overlapWeight[CAMERA_COUNT];
-
+    // The fbo and textures for the separate screen rendering passes:
     unsigned int fbo_screen[CAMERA_COUNT];
     unsigned int texture2D_screenColor[CAMERA_COUNT];
     unsigned int texture2D_screenVertices[CAMERA_COUNT];
     unsigned int texture2D_screenNormals[CAMERA_COUNT];
     unsigned int texture2D_screenDepth[CAMERA_COUNT];
 
-    unsigned int fbo_cameraDom;
-    unsigned int texture2D_cameraDom;
+    // The fbo and texture for the major cam pass:
+    unsigned int fbo_majorCam;
+    unsigned int texture2D_majorCam;
 
+    // The fbo and texture for the camera weights:
     unsigned int fbo_cameraWeights;
-    unsigned int texture2D_cameraWeightsA;
-    unsigned int texture2D_cameraWeightsB;
-
+    unsigned int texture2D_cameraWeightsA; // Camera 0-3
+    unsigned int texture2D_cameraWeightsB; // Camera 4-7
 
     int fbo_screen_width = -1;
     int fbo_screen_height = -1;
@@ -77,22 +77,21 @@ class BlendedMeshRenderer : public Renderer {
     std::vector<unsigned int> usedCameraIDs;
 
     /**
-     * Define all shaders which are needed.
+     * Define all the shaders for the point cloud processing passes:
      */
-    Shader aKernelShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/a_kernel.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/a_kernel.frag");
-    Shader nKernelShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/n_kernel.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/n_kernel.frag");
-    Shader rejectedShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/rejected.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/rejected.frag");//, CMAKE_SOURCE_DIR "/shader/smoothedMesh/rejected.geo");
-    Shader edgeNearnessShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/edgeNearness.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/edgeNearness.frag");
+    Shader rejectionShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/rejection.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/rejection.frag");
+    Shader edgeProximityShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/edgeProximity.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/edgeProximity.frag");
+    Shader mlsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/mls.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/mls.frag");
+    Shader normalsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/normals.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/normals.frag");
+    Shader qualityEstimateShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/qualityEstimate.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/qualityEstimate.frag");
 
-    Shader overlapShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/overlap.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/overlap.frag");
-    Shader overlapWeightShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/overlapWeight.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/overlapWeight.frag");
-
-    Shader fusionShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/fusion.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/fusion.frag");
-    Shader renderShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/experimentalPointcloud.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/experimentalPointcloud.frag", CMAKE_SOURCE_DIR "/shader/blendpcr/experimentalPointcloud.geo");
-
-    Shader cameraDomShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screenCameraDominance.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screenCameraDominance.frag");
-    Shader cameraWeightsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screenCameraWeights.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screenCameraWeights.frag");
-    Shader screenMergingShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screenMerging.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screenMerging.frag");
+    /**
+     * Define all the shaders for the screen passes:
+     */
+    Shader renderShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.frag", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.geo");
+    Shader majorCamShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.frag");
+    Shader cameraWeightsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.frag");
+    Shader blendingShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/blending.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/blending.frag");
 
     /**
      * Defines the mesh
@@ -191,7 +190,6 @@ class BlendedMeshRenderer : public Renderer {
         }
     };
 
-
     void initMesh(){
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -242,7 +240,6 @@ class BlendedMeshRenderer : public Renderer {
         glEnableVertexAttribArray(0);
     }
 
-
     void init(){
         int mainViewport[4];
         glGetIntegerv(GL_VIEWPORT, mainViewport);
@@ -285,8 +282,8 @@ class BlendedMeshRenderer : public Renderer {
 
             // Delete old frame buffer + texture:
             if(fbo_mini_screen_width != -1){
-                glDeleteFramebuffers(1, &fbo_cameraDom);
-                glDeleteTextures(1, &texture2D_cameraDom);
+                glDeleteFramebuffers(1, &fbo_majorCam);
+                glDeleteTextures(1, &texture2D_majorCam);
 
                 glDeleteFramebuffers(1, &fbo_cameraWeights);
                 glDeleteTextures(1, &texture2D_cameraWeightsA);
@@ -297,11 +294,11 @@ class BlendedMeshRenderer : public Renderer {
             int requestedMiniScreenHeight = mainViewport[3] / 4;
 
 
-            glGenFramebuffers(1, &fbo_cameraDom);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraDom);
+            glGenFramebuffers(1, &fbo_majorCam);
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo_majorCam);
 
-            generateAndBind2DTexture(texture2D_cameraDom, requestedMiniScreenWidth, requestedMiniScreenHeight, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, GL_NEAREST);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_cameraDom, 0);
+            generateAndBind2DTexture(texture2D_majorCam, requestedMiniScreenWidth, requestedMiniScreenHeight, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, GL_NEAREST);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_majorCam, 0);
 
             glGenFramebuffers(1, &fbo_cameraWeights);
             glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraWeights);
@@ -360,11 +357,11 @@ class BlendedMeshRenderer : public Renderer {
              */
 
             {
-                glGenFramebuffers(1, &fbo_rejected[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejected[cameraID]);
+                glGenFramebuffers(1, &fbo_rejection[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejection[cameraID]);
 
-                generateAndBind2DTexture(texture2D_rejected[cameraID], imageWidth, imageHeight, GL_RED, GL_RED, GL_UNSIGNED_BYTE, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_rejected[cameraID], 0);
+                generateAndBind2DTexture(texture2D_rejection[cameraID], imageWidth, imageHeight, GL_RED, GL_RED, GL_UNSIGNED_BYTE, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_rejection[cameraID], 0);
 
                 TextureFBO({
                     TextureType(GL_RED, GL_RED, GL_UNSIGNED_BYTE)
@@ -372,9 +369,9 @@ class BlendedMeshRenderer : public Renderer {
             }
 
             /**
-             * Generate resources for EDGE NEARNESS PASS.
+             * Generate resources for EDGE PROXIMITY PASS.
              *
-             * This pass calculates the nearness to invalid pixels.
+             * This pass calculates the proximity to invalid pixels.
              *
              * A red-value of 0 means far away from edge, 1 means on edge.
              *
@@ -384,102 +381,68 @@ class BlendedMeshRenderer : public Renderer {
              */
 
             {
-                glGenFramebuffers(1, &fbo_edgeNearness[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeNearness[cameraID]);
+                glGenFramebuffers(1, &fbo_edgeProximity[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeProximity[cameraID]);
 
-                generateAndBind2DTexture(texture2D_edgeNearness[cameraID], imageWidth, imageHeight, GL_RED, GL_RED, GL_UNSIGNED_BYTE, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_edgeNearness[cameraID], 0);
+                generateAndBind2DTexture(texture2D_edgeProximity[cameraID], imageWidth, imageHeight, GL_RED, GL_RED, GL_UNSIGNED_BYTE, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_edgeProximity[cameraID], 0);
             }
 
 
             /**
-             * Generate resources for OVERLAP PASS.
+             * Generate resources for QUALITY ESTIMATE PASS.
              *
-             * This pass calcluates whether a vertex has overlaps in other
-             * cameras. If there are overlaps, the value is 1 (in the
-             * respective color-value), if there are no overlaps, the value
-             * will be 0.
+             * This pass calcluates the estimated quality for each pixel of
+             * this camera. The first output value is the quality estimate,
+             * the second output is the edge proximity.
              */
 
             {
-                glGenFramebuffers(1, &fbo_overlap[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_overlap[cameraID]);
+                glGenFramebuffers(1, &fbo_qualityEstimate[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
 
-                generateAndBind2DTexture(texture2D_overlap[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_overlap[cameraID], 0);
+                generateAndBind2DTexture(texture2D_qualityEstimate[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID], 0);
             }
 
-            /**
-             * Generate resources for OVERLAP EDGE NEARNESS PASS.
-             *
-             * This pass "fade outs" the overlap regions. If a overlap is
-             * near to the edge (where no overlap happens), the value will
-             * be near 0.
-             */
-
-            {
-                glGenFramebuffers(1, &fbo_overlapWeight[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_overlapWeight[cameraID]);
-
-                generateAndBind2DTexture(texture2D_overlapWeight[cameraID], imageWidth, imageHeight, GL_RGBA16UI, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_overlapWeight[cameraID], 0);
-            }
 
             /**
-             * A(X) Kernel PASS: Generate frame buffer and render texture.
+             * MLS PASS: Generate frame buffer and render texture.
              *
              * This pass smoothes the vertices with a weighted moving least
-             * squares kernel while being weighted with the edgeNearness
+             * squares kernel while being weighted with the edgeProximity
              * (to smooth the edges).
              */
 
             {
-                glGenFramebuffers(1, &fbo_aKernel[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_aKernel[cameraID]);
+                glGenFramebuffers(1, &fbo_mls[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
 
-                generateAndBind2DTexture(texture2D_aKernel[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_aKernel[cameraID], 0);
+                generateAndBind2DTexture(texture2D_mlsVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_mlsVertices[cameraID], 0);
             }
 
             /**
-             * N(X) Kernel PASS: Generate frame buffer and render texture.
+             * NORMAL ESTIMATION PASS: Generate frame buffer and render texture.
              *
-             * Calculates normals for the vertices using cholesky, eigenvalues...
+             * Calculates normals for the vertices using cholesky, eigenvalues,
+             * and so on.
              */
 
             {
-                glGenFramebuffers(1, &fbo_nKernel[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_nKernel[cameraID]);
+                glGenFramebuffers(1, &fbo_normals[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
 
-                generateAndBind2DTexture(texture2D_nKernel[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_nKernel[cameraID], 0);
-            }
-
-            /**
-             * Generate resources for FUSION PASS.
-             *
-             * This pass moves the vertices near to each other when overlapping.
-             */
-
-            {
-                glGenFramebuffers(1, &fbo_fusionPC[cameraID]);
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_fusionPC[cameraID]);
-
-                generateAndBind2DTexture(texture2D_fusionVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_fusionVertices[cameraID], 0);
-
-                generateAndBind2DTexture(texture2D_fusionNormals[cameraID], imageWidth, imageHeight, GL_RGB16F, GL_RGB, GL_FLOAT, GL_NEAREST);
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2D_fusionNormals[cameraID], 0);
+                generateAndBind2DTexture(texture2D_normals[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_LINEAR);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_normals[cameraID], 0);
             }
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
-        std::cout << "Initialized FrameBuffers for smooth rendering!" << std::endl;
+        std::cout << "Initialized FrameBuffers for BlendPCR" << std::endl;
         isInitialized = true;
     }
-
-    bool timeLabelsPrinted = false;
 
 public:
     float implicitH = 0.01f;
@@ -490,9 +453,6 @@ public:
 
     float uploadTime = 0;
 
-    BlendedMeshRenderer(){
-
-    }
 
     /**
      * Integrate new RGB XYZ images.
@@ -622,24 +582,22 @@ public:
         endTimeMeasure("1d) Lookup");
         //endTimeMeasure("1) UploadTextures");
 
-
-
         startTimeMeasure("2a) RejectedPass", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Rejected PASS:
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejected[cameraID]);
-                rejectedShader.bind();
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejection[cameraID]);
+                rejectionShader.bind();
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
-                rejectedShader.setUniform("pointCloud", 1);
+                rejectionShader.setUniform("pointCloud", 1);
 
                 glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
-                rejectedShader.setUniform("colorTexture", 2);
+                rejectionShader.setUniform("colorTexture", 2);
 
-                rejectedShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
+                rejectionShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -651,13 +609,13 @@ public:
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Edge Distance PASS:
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeNearness[cameraID]);
-                edgeNearnessShader.bind();
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeProximity[cameraID]);
+                edgeProximityShader.bind();
 
                 glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_rejected[cameraID]);
-                edgeNearnessShader.setUniform("rejectedTexture", 1);
-                edgeNearnessShader.setUniform("kernelRadius", 10);
+                glBindTexture(GL_TEXTURE_2D, texture2D_rejection[cameraID]);
+                edgeProximityShader.setUniform("rejectedTexture", 1);
+                edgeProximityShader.setUniform("kernelRadius", 10);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -669,20 +627,20 @@ public:
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Texture a(x) PASS:
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_aKernel[cameraID]);
-                aKernelShader.bind();
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
+                mlsShader.bind();
 
-                aKernelShader.setUniform("kernelRadius", kernelRadius);
-                aKernelShader.setUniform("kernelSpread", kernelSpread);
-                aKernelShader.setUniform("p_h", implicitH);
+                mlsShader.setUniform("kernelRadius", kernelRadius);
+                mlsShader.setUniform("kernelSpread", kernelSpread);
+                mlsShader.setUniform("p_h", implicitH);
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
-                aKernelShader.setUniform("pointCloud", 1);
+                mlsShader.setUniform("pointCloud", 1);
 
                 glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_edgeNearness[cameraID]);
-                aKernelShader.setUniform("edgeNearness", 2);
+                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                mlsShader.setUniform("edgeProximity", 2);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -694,27 +652,24 @@ public:
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Texture n(x) PASS:
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_nKernel[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
                 //gl.glDisable(GL_DEPTH_TEST);
-                nKernelShader.bind();
+                normalsShader.bind();
 
-                //float implicitH = GlobalStateHandler::instance().rightBarViewModel()->implicitH();
-
-                nKernelShader.setUniform("kernelRadius", kernelRadius);
-                nKernelShader.setUniform("kernelSpread", kernelSpread);
-                //nKernelShader.setUniform(gl, "p_h", 0.025f);
+                normalsShader.setUniform("kernelRadius", kernelRadius);
+                normalsShader.setUniform("kernelSpread", kernelSpread);
 
                 glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_aKernel[cameraID]);
-                nKernelShader.setUniform("texture2D_aKernel", 1);
+                glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                normalsShader.setUniform("texture2D_mlsVertices", 1);
 
                 glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_edgeNearness[cameraID]);
-                nKernelShader.setUniform("texture2D_edgeNearness", 2);
+                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                normalsShader.setUniform("texture2D_edgeProximity", 2);
 
                 glActiveTexture(GL_TEXTURE3);
                 glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
-                nKernelShader.setUniform("texture2D_inputVertices", 3);
+                normalsShader.setUniform("texture2D_inputVertices", 3);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -726,44 +681,44 @@ public:
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // OVERLAP PASS:
             {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_overlap[cameraID]);
-                overlapShader.bind();
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
+                qualityEstimateShader.bind();
 
                 unsigned int currentTexture = 1;
                 for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
                     glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_aKernel[cameraIDOfTexture]);
-                    overlapShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraIDOfTexture]);
+                    qualityEstimateShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                     ++currentTexture;
 
                     glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_nKernel[cameraIDOfTexture]);
-                    overlapShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraIDOfTexture]);
+                    qualityEstimateShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                     ++currentTexture;
 
                     glActiveTexture(GL_TEXTURE0 + currentTexture);
                     glBindTexture(GL_TEXTURE_2D, texture2D_inputLookup3DToImage[cameraIDOfTexture]);
-                    overlapShader.setUniform("lookup["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    qualityEstimateShader.setUniform("lookup["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                     ++currentTexture;
 
                     glActiveTexture(GL_TEXTURE0 + currentTexture);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeNearness[cameraIDOfTexture]);
-                    overlapShader.setUniform("edgeDistances["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraIDOfTexture]);
+                    qualityEstimateShader.setUniform("edgeDistances["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                     ++currentTexture;
 
 
                     Mat4f fromCurrentCam = currentPointClouds[cameraIDOfTexture]->modelMatrix.inverse() * currentPointClouds[cameraID]->modelMatrix;
 
-                    overlapShader.setUniform("fromCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam);
-                    overlapShader.setUniform("toCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam.inverse());
+                    qualityEstimateShader.setUniform("fromCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam);
+                    qualityEstimateShader.setUniform("toCurrentCam["+std::to_string(cameraIDOfTexture)+"]", fromCurrentCam.inverse());
                 }
 
                 for(int i=0; i < CAMERA_COUNT; ++i){
-                    overlapShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                    qualityEstimateShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
                 }
 
-                overlapShader.setUniform("useFusion", useFusion);
-                overlapShader.setUniform("cameraID", int(cameraID));
+                qualityEstimateShader.setUniform("useFusion", useFusion);
+                qualityEstimateShader.setUniform("cameraID", int(cameraID));
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -812,20 +767,20 @@ public:
 
             glActiveTexture(GL_TEXTURE3);
             // pointCloudTexture->bind(gl);
-            glBindTexture(GL_TEXTURE_2D, texture2D_aKernel[cameraID]);
+            glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
             renderShader.setUniform("texture2D_vertices", 3);
 
             glActiveTexture(GL_TEXTURE4);
-            glBindTexture(GL_TEXTURE_2D, texture2D_edgeNearness[cameraID]);
-            renderShader.setUniform("texture2D_edgeNearness", 4);
+            glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+            renderShader.setUniform("texture2D_edgeProximity", 4);
 
             glActiveTexture(GL_TEXTURE5);
-            glBindTexture(GL_TEXTURE_2D, texture2D_nKernel[cameraID]);
+            glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
             renderShader.setUniform("texture2D_normals", 5);
 
             glActiveTexture(GL_TEXTURE6);
-            glBindTexture(GL_TEXTURE_2D, texture2D_overlap[cameraID]);
-            renderShader.setUniform("texture2D_overlap", 6);
+            glBindTexture(GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID]);
+            renderShader.setUniform("texture2D_qualityEstimate", 6);
 
             glActiveTexture(GL_TEXTURE7);
             glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
@@ -850,40 +805,40 @@ public:
         // MiniScreen:
         {
             glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraDom);
-            cameraDomShader.bind();
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo_majorCam);
+            majorCamShader.bind();
 
             unsigned int currentTexture = 1;
             for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
-                cameraDomShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                majorCamShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
-                cameraDomShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                majorCamShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
-                cameraDomShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                majorCamShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
-                cameraDomShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                majorCamShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
             }
 
             for(int i=0; i < CAMERA_COUNT; ++i){
-                cameraDomShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                majorCamShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
             }
 
-            cameraDomShader.setUniform("view", view);
+            majorCamShader.setUniform("view", view);
 
-            cameraDomShader.setUniform("useFusion", useFusion);
-            cameraDomShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
+            majorCamShader.setUniform("useFusion", useFusion);
+            majorCamShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
 
             glBindVertexArray(VAO_quad);
             glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -900,7 +855,7 @@ public:
             glDrawBuffers(2, attachments);
 
             glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, texture2D_cameraDom);
+            glBindTexture(GL_TEXTURE_2D, texture2D_majorCam);
             cameraWeightsShader.setUniform("dominanceTexture", 1);
 
             for(int i=0; i < CAMERA_COUNT; ++i){
@@ -921,85 +876,65 @@ public:
             unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
             glDrawBuffers(1, attachments);
 
-            screenMergingShader.bind();
+            blendingShader.bind();
 
             unsigned int currentTexture = 1;
             for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
-                screenMergingShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                blendingShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
-                screenMergingShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                blendingShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
-                screenMergingShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                blendingShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
 
                 glActiveTexture(GL_TEXTURE0 + currentTexture);
                 glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
-                screenMergingShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                blendingShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
                 ++currentTexture;
             }
 
             glActiveTexture(GL_TEXTURE0 + currentTexture);
             glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsA);
-            screenMergingShader.setUniform("miniWeightsA", int(currentTexture));
+            blendingShader.setUniform("miniWeightsA", int(currentTexture));
             ++currentTexture;
 
             glActiveTexture(GL_TEXTURE0 + currentTexture);
             glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsB);
-            screenMergingShader.setUniform("miniWeightsB", int(currentTexture));
+            blendingShader.setUniform("miniWeightsB", int(currentTexture));
             ++currentTexture;
 
             for(int i=0; i < CAMERA_COUNT; ++i){
-                screenMergingShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                blendingShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
             }
 
-            screenMergingShader.setUniform("view", view);
+            blendingShader.setUniform("view", view);
 
             // Lighting
             Vec4f lightPos[4] = {Vec4f(1.5f, 1.5f, 1.5f), Vec4f(-1.5f, 1.5f, 1.5f), Vec4f(-1.5f, 1.5f, -1.5f), Vec4f(1.5f, 1.5f, -1.5f)};
             Vec4f lightColors[4] = {Vec4f(0.5f, 0.75f, 1.0f), Vec4f(1.0f, 0.75f, 0.5f), Vec4f(0.5f, 0.75f, 1.0f), Vec4f(1.0f, 0.75f, 0.5f)};
 
             for(int i=0; i < 4; ++i){
-                screenMergingShader.setUniform("lights["+std::to_string(i)+"].position", view * lightPos[i]);
-                screenMergingShader.setUniform("lights["+std::to_string(i)+"].intensity", lightColors[i]);
-                screenMergingShader.setUniform("lights["+std::to_string(i)+"].range", 10.f);
+                blendingShader.setUniform("lights["+std::to_string(i)+"].position", view * lightPos[i]);
+                blendingShader.setUniform("lights["+std::to_string(i)+"].intensity", lightColors[i]);
+                blendingShader.setUniform("lights["+std::to_string(i)+"].range", 10.f);
             }
 
-            screenMergingShader.setUniform("useFusion", useFusion);
-            screenMergingShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
+            blendingShader.setUniform("useFusion", useFusion);
+            blendingShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
 
             glBindVertexArray(VAO_quad);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         endTimeMeasure("3d) ScreenMerging", true);
 
-
-        /*
-        if(!timeLabelsPrinted){
-            std::cout << "ScreenWidth,ScreenHeight,";
-
-            // Iteration mit einem for-each-Loop
-            for (const auto& pair : timeMeasureMap) {
-                std::cout << pair.first << ",";
-            }
-            timeLabelsPrinted = true;
-            std::cout << std::endl;
-        }
-
-        std::cout << fbo_screen_width << "," << fbo_screen_height << ",";
-        // Iteration mit einem for-each-Loop
-        for (const auto& pair : timeMeasureMap) {
-            std::cout << pair.second << ",";
-        }
-        std::cout << std::endl;
-*/
         GLint maxCombinedTextureImageUnits;
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTextureImageUnits);
 
@@ -1014,5 +949,4 @@ public:
 
         glEnable(GL_BLEND);
     }
-
 };

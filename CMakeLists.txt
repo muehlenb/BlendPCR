@@ -40,7 +40,7 @@ set(DEFAULT_HEADERS
     src/pcrenderer/Renderer.h
     src/pcrenderer/SplatRenderer.h
     src/pcrenderer/SimpleMeshRenderer.h
-    src/pcrenderer/BlendedMeshRenderer.h
+    src/pcrenderer/BlendPCR.h
 
     # PC Streamer
     src/pcstreamer/Streamer.h
@@ -127,6 +127,33 @@ endif()
 
 # Define shader & resources which should be listed in IDE:
 set(RESOURCES
+    shader/blendpcr/pointcloud/rejection.vert
+    shader/blendpcr/pointcloud/rejection.frag
+
+    shader/blendpcr/pointcloud/edgeProximity.vert
+    shader/blendpcr/pointcloud/edgeProximity.frag
+
+    shader/blendpcr/pointcloud/mls.vert
+    shader/blendpcr/pointcloud/mls.frag
+
+    shader/blendpcr/pointcloud/normals.vert
+    shader/blendpcr/pointcloud/normals.frag
+
+    shader/blendpcr/pointcloud/qualityEstimate.vert
+    shader/blendpcr/pointcloud/qualityEstimate.frag
+
+    shader/blendpcr/screen/separateRendering.vert
+    shader/blendpcr/screen/separateRendering.geo
+    shader/blendpcr/screen/separateRendering.frag
+
+    shader/blendpcr/screen/majorCam.vert
+    shader/blendpcr/screen/majorCam.frag
+
+    shader/blendpcr/screen/cameraWeights.vert
+    shader/blendpcr/screen/cameraWeights.frag
+
+    shader/blendpcr/screen/blending.vert
+    shader/blendpcr/screen/blending.frag
 )
 # Allow to include files directly in this paths (without the need to specify folders):
 include_directories(src src/util/math lib lib/stb_image lib/tiny_obj_loader)
