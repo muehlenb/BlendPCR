@@ -17,6 +17,7 @@ endif()
 # Set C++ stardard:
 set(CMAKE_CXX_STANDARD 17)
 
+
 # Enable automatic include of generated files (like paths.h):
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -29,7 +30,9 @@ add_subdirectory(lib/glad)
 # OpenMP (normally installed):
 find_package(OpenMP)
 
-find_package(nlohmann_json CONFIG REQUIRED)
+# Find K4A library
+find_package(k4a CONFIG REQUIRED)
+find_package(k4arecord CONFIG REQUIRED)
 
 # Default headers (which are usable without external libraries):
 set(DEFAULT_HEADERS
@@ -99,7 +102,6 @@ set(DEFAULT_SOURCES
     # Organized point cloud
     src/util/OrganizedPointCloud.cpp
 )
-
 
 # When CUDA 12.1 is enabled:
 if(USE_CUDA)
@@ -203,11 +205,8 @@ endif()
 target_compile_definitions(BlendPCR PRIVATE USE_KINECT)
 
 # Azure Kinect libraries
-target_include_directories(BlendPCR PRIVATE "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\include\\")
-target_link_libraries(BlendPCR PRIVATE "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\windows-desktop\\amd64\\release\\lib\\k4a.lib")
-target_link_libraries(BlendPCR PRIVATE "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\windows-desktop\\amd64\\release\\lib\\k4arecord.lib")
-
-target_link_libraries(BlendPCR PRIVATE nlohmann_json::nlohmann_json)
+target_include_directories(BlendPCR PRIVATE k4a::k4a)
+target_link_libraries(BlendPCR PRIVATE k4a::k4a k4a::k4arecord)
 
 # OpenMP
 target_link_libraries(BlendPCR PUBLIC OpenMP::OpenMP_CXX)

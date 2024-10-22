@@ -75,7 +75,7 @@ using namespace std::chrono;
 #define IMGUI_PIPELINE_HEADCOL ImVec4(0.4f, 0.2f, 0.2f, 1.f)
 #define IMGUI_PIPELINE_HEADCOL_HOVER ImVec4(0.5f, 0.25f, 0.25f, 1.f)
 
-#define MENU_WIDTHI 260
+#define MENU_WIDTH 260
 
 /**
  * Initializes the application including the GUI
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
     io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 14.0f * dpiXScale);
     ImFont* fontSmall = io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 10.0f * dpiXScale);
 
-    float menuWidth = MENU_WIDTHI * dpiXScale;
+    int menuWidth = int(MENU_WIDTH * dpiXScale);
 
     int initWindowWidth = std::min(int(1600 * dpiXScale), int(mode->width * 0.86));
     int initWindowHeight = std::min(int(900 * dpiXScale), int(mode->height * 0.86));

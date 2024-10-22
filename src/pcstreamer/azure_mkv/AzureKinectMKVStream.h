@@ -92,7 +92,9 @@ public:
             k4a_playback_close(playback_handle);
             return;
         }
+    }
 
+    void init(){
         // Get depth to color transform:
         {
             k4a_calibration_extrinsics_t extr = calibration.extrinsics[0][1];
@@ -113,7 +115,6 @@ public:
         k4a_capture_t capture = NULL;
         while (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED)
         {
-
             k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
             if (depth_image != NULL) {
                 // Erhalte den Timestamp des Tiefenbildes

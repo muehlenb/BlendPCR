@@ -47,7 +47,6 @@ public:
 
         streams = std::vector<std::shared_ptr<AzureKinectMKVStream>>(numCameras);
 
-        #pragma omp parallel for
         for(int i = 0; i < numCameras; ++i){
             json jcamera = jfile["camera"][i];
             std::string filename = jcamera["filename"].get<std::string>();
@@ -65,6 +64,10 @@ public:
             Mat4f matrix(rawMat);
 
             streams[i] = std::make_shared<AzureKinectMKVStream>(rootPath + filename, matrix, useColorIndices);
+        }
+
+        for(int i = 0; i < numCameras; ++i){
+            streams[i]->init();
         }
 
         readingThread = std::thread([this](){
