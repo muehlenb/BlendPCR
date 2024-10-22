@@ -40,7 +40,7 @@ set(DEFAULT_HEADERS
     src/pcrenderer/Renderer.h
     src/pcrenderer/SplatRenderer.h
     src/pcrenderer/SimpleMeshRenderer.h
-    src/pcrenderer/BlendedMeshRenderer.h
+    src/pcrenderer/BlendPCR.h
 
     # PC Streamer
     src/pcstreamer/Streamer.h
@@ -144,7 +144,7 @@ set(RESOURCES
 
     shader/blendpcr/screen/separateRendering.vert
     shader/blendpcr/screen/separateRendering.geo
-    shader/blendpcr/screen/separateRendering.vert
+    shader/blendpcr/screen/separateRendering.frag
 
     shader/blendpcr/screen/majorCam.vert
     shader/blendpcr/screen/majorCam.frag

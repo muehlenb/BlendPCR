@@ -4,9 +4,9 @@
 #include "src/pcrenderer/Renderer.h"
 #include "src/pcrenderer/SplatRenderer.h"
 #include "src/pcrenderer/SimpleMeshRenderer.h"
-#include "src/pcrenderer/BlendedMeshRenderer.h"
+#include "src/pcrenderer/BlendPCR.h"
 
-const char* Renderer::availableAlgorithmNames[] = { "Splats (Uniform)", "Naive Mesh", "Blended Mesh"};
+const char* Renderer::availableAlgorithmNames[] = { "Splats (Uniform)", "Naive Mesh", "BlendPCR"};
 
 const unsigned int Renderer::availableAlgorithmNum = 3;
 
@@ -16,7 +16,7 @@ std::shared_ptr<Renderer> Renderer::constructAlgorithmInstance(int type){
     } else if(type == 1){
         return std::make_shared<SimpleMeshRenderer>();
     } else if(type == 2){
-        return std::make_shared<BlendedMeshRenderer>();
+        return std::make_shared<BlendPCR>();
     }
 
     std::cout << "Created " << availableAlgorithmNames[type] << std::endl;

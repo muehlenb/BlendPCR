@@ -15,7 +15,7 @@ using namespace std::chrono;
 #define CAMERA_IMAGE_HEIGHT 576
 #define LOOKUP_IMAGE_SIZE 1024
 
-class BlendedMeshRenderer : public Renderer {
+class BlendPCR : public Renderer {
     std::vector<std::shared_ptr<OrganizedPointCloud>> currentPointClouds;
 
     bool isInitialized = false;
@@ -190,7 +190,6 @@ class BlendedMeshRenderer : public Renderer {
         }
     };
 
-
     void initMesh(){
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -240,7 +239,6 @@ class BlendedMeshRenderer : public Renderer {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(0);
     }
-
 
     void init(){
         int mainViewport[4];
@@ -951,5 +949,4 @@ public:
 
         glEnable(GL_BLEND);
     }
-
 };
