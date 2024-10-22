@@ -23,41 +23,48 @@ class BlendedMeshRenderer : public Renderer {
     /**
      * Declares all FBOs and textures which we need.
      */
-
     unsigned int highres_colors[CAMERA_COUNT];
 
+    // The textures for the input point clouds:
     unsigned int texture2D_inputVertices[CAMERA_COUNT];
     unsigned int texture2D_inputRGB[CAMERA_COUNT];
     unsigned int texture2D_inputLookup3DToImage[CAMERA_COUNT];
 
-    unsigned int fbo_mls[CAMERA_COUNT];
-    unsigned int texture2D_mlsVertices[CAMERA_COUNT];
-
-    unsigned int fbo_normals[CAMERA_COUNT];
-    unsigned int texture2D_normals[CAMERA_COUNT];
-
+    // The fbo and texture for the rejection pass:
     unsigned int fbo_rejection[CAMERA_COUNT];
     unsigned int texture2D_rejection[CAMERA_COUNT];
 
+    // The fbo and texture for the edge proximity pass:
     unsigned int fbo_edgeProximity[CAMERA_COUNT];
     unsigned int texture2D_edgeProximity[CAMERA_COUNT];
 
+    // The fbo and texture for the mls pass:
+    unsigned int fbo_mls[CAMERA_COUNT];
+    unsigned int texture2D_mlsVertices[CAMERA_COUNT];
+
+    // The fbo and texture for the normal estimation pass:
+    unsigned int fbo_normals[CAMERA_COUNT];
+    unsigned int texture2D_normals[CAMERA_COUNT];
+
+    // The fbo and texture for the quality estimation pass:
     unsigned int fbo_qualityEstimate[CAMERA_COUNT];
     unsigned int texture2D_qualityEstimate[CAMERA_COUNT];
 
+    // The fbo and textures for the separate screen rendering passes:
     unsigned int fbo_screen[CAMERA_COUNT];
     unsigned int texture2D_screenColor[CAMERA_COUNT];
     unsigned int texture2D_screenVertices[CAMERA_COUNT];
     unsigned int texture2D_screenNormals[CAMERA_COUNT];
     unsigned int texture2D_screenDepth[CAMERA_COUNT];
 
+    // The fbo and texture for the major cam pass:
     unsigned int fbo_majorCam;
     unsigned int texture2D_majorCam;
 
+    // The fbo and texture for the camera weights:
     unsigned int fbo_cameraWeights;
-    unsigned int texture2D_cameraWeightsA;
-    unsigned int texture2D_cameraWeightsB;
-
+    unsigned int texture2D_cameraWeightsA; // Camera 0-3
+    unsigned int texture2D_cameraWeightsB; // Camera 4-7
 
     int fbo_screen_width = -1;
     int fbo_screen_height = -1;
@@ -70,7 +77,7 @@ class BlendedMeshRenderer : public Renderer {
     std::vector<unsigned int> usedCameraIDs;
 
     /**
-     * Define all shaders which are needed.
+     * Define all the shaders for the point cloud processing passes:
      */
     Shader rejectionShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/rejection.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/rejection.frag");
     Shader edgeProximityShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/edgeProximity.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/edgeProximity.frag");
@@ -78,6 +85,9 @@ class BlendedMeshRenderer : public Renderer {
     Shader normalsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/normals.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/normals.frag");
     Shader qualityEstimateShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/qualityEstimate.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/qualityEstimate.frag");
 
+    /**
+     * Define all the shaders for the screen passes:
+     */
     Shader renderShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.frag", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.geo");
     Shader majorCamShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.frag");
     Shader cameraWeightsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.frag");
@@ -361,9 +371,9 @@ class BlendedMeshRenderer : public Renderer {
             }
 
             /**
-             * Generate resources for EDGE NEARNESS PASS.
+             * Generate resources for EDGE PROXIMITY PASS.
              *
-             * This pass calculates the nearness to invalid pixels.
+             * This pass calculates the proximity to invalid pixels.
              *
              * A red-value of 0 means far away from edge, 1 means on edge.
              *
@@ -382,12 +392,11 @@ class BlendedMeshRenderer : public Renderer {
 
 
             /**
-             * Generate resources for OVERLAP PASS.
+             * Generate resources for QUALITY ESTIMATE PASS.
              *
-             * This pass calcluates whether a vertex has overlaps in other
-             * cameras. If there are overlaps, the value is 1 (in the
-             * respective color-value), if there are no overlaps, the value
-             * will be 0.
+             * This pass calcluates the estimated quality for each pixel of
+             * this camera. The first output value is the quality estimate,
+             * the second output is the edge proximity.
              */
 
             {
@@ -400,10 +409,10 @@ class BlendedMeshRenderer : public Renderer {
 
 
             /**
-             * A(X) Kernel PASS: Generate frame buffer and render texture.
+             * MLS PASS: Generate frame buffer and render texture.
              *
              * This pass smoothes the vertices with a weighted moving least
-             * squares kernel while being weighted with the edgeNearness
+             * squares kernel while being weighted with the edgeProximity
              * (to smooth the edges).
              */
 
@@ -416,9 +425,10 @@ class BlendedMeshRenderer : public Renderer {
             }
 
             /**
-             * N(X) Kernel PASS: Generate frame buffer and render texture.
+             * NORMAL ESTIMATION PASS: Generate frame buffer and render texture.
              *
-             * Calculates normals for the vertices using cholesky, eigenvalues...
+             * Calculates normals for the vertices using cholesky, eigenvalues,
+             * and so on.
              */
 
             {
@@ -432,11 +442,9 @@ class BlendedMeshRenderer : public Renderer {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
-        std::cout << "Initialized FrameBuffers for smooth rendering!" << std::endl;
+        std::cout << "Initialized FrameBuffers for BlendPCR" << std::endl;
         isInitialized = true;
     }
-
-    bool timeLabelsPrinted = false;
 
 public:
     float implicitH = 0.01f;
@@ -447,9 +455,6 @@ public:
 
     float uploadTime = 0;
 
-    BlendedMeshRenderer(){
-
-    }
 
     /**
      * Integrate new RGB XYZ images.
@@ -579,8 +584,6 @@ public:
         endTimeMeasure("1d) Lookup");
         //endTimeMeasure("1) UploadTextures");
 
-
-
         startTimeMeasure("2a) RejectedPass", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Rejected PASS:
@@ -639,7 +642,7 @@ public:
 
                 glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-                mlsShader.setUniform("edgeNearness", 2);
+                mlsShader.setUniform("edgeProximity", 2);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -655,11 +658,8 @@ public:
                 //gl.glDisable(GL_DEPTH_TEST);
                 normalsShader.bind();
 
-                //float implicitH = GlobalStateHandler::instance().rightBarViewModel()->implicitH();
-
                 normalsShader.setUniform("kernelRadius", kernelRadius);
                 normalsShader.setUniform("kernelSpread", kernelSpread);
-                //normalsShader.setUniform(gl, "p_h", 0.025f);
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
@@ -937,26 +937,6 @@ public:
         }
         endTimeMeasure("3d) ScreenMerging", true);
 
-
-        /*
-        if(!timeLabelsPrinted){
-            std::cout << "ScreenWidth,ScreenHeight,";
-
-            // Iteration mit einem for-each-Loop
-            for (const auto& pair : timeMeasureMap) {
-                std::cout << pair.first << ",";
-            }
-            timeLabelsPrinted = true;
-            std::cout << std::endl;
-        }
-
-        std::cout << fbo_screen_width << "," << fbo_screen_height << ",";
-        // Iteration mit einem for-each-Loop
-        for (const auto& pair : timeMeasureMap) {
-            std::cout << pair.second << ",";
-        }
-        std::cout << std::endl;
-*/
         GLint maxCombinedTextureImageUnits;
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTextureImageUnits);
 
