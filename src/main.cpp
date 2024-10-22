@@ -75,7 +75,7 @@ using namespace std::chrono;
 #define IMGUI_PIPELINE_HEADCOL ImVec4(0.4f, 0.2f, 0.2f, 1.f)
 #define IMGUI_PIPELINE_HEADCOL_HOVER ImVec4(0.5f, 0.25f, 0.25f, 1.f)
 
-#define MENU_WIDTH 260
+#define MENU_WIDTHI 260
 
 /**
  * Initializes the application including the GUI
@@ -97,8 +97,28 @@ int main(int argc, char** argv)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
+    float dpiXScale, dpiYScale;
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    glfwGetMonitorContentScale(monitor, &dpiXScale, &dpiYScale);
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+    // Setup Dear ImGui context:
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+
+    // Load Roboto Font:
+    io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 14.0f * dpiXScale);
+    ImFont* fontSmall = io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 10.0f * dpiXScale);
+
+    float menuWidth = MENU_WIDTHI * dpiXScale;
+
+    int initWindowWidth = std::min(int(1600 * dpiXScale), int(mode->width * 0.86));
+    int initWindowHeight = std::min(int(900 * dpiXScale), int(mode->height * 0.86));
+
     // Create window with graphics context:
-    GLFWwindow* window = glfwCreateWindow(1600, 900, "BlendPCR (GUI): Lite Version of PCRFramework", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(initWindowWidth, initWindowHeight, "BlendPCR (GUI): Lite Version of PCRFramework", NULL, NULL);
     if (window == NULL)
         return 1;
 
@@ -112,11 +132,6 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // Setup Dear ImGui context:
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 
     // Setup Dear ImGui style:
     ImGui::StyleColorsDark();
@@ -124,10 +139,6 @@ int main(int argc, char** argv)
     // Setup Platform/Renderer backends:
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
-    // Load Roboto Font:
-    io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 16.0f);
-    ImFont* fontSmall = io.Fonts->AddFontFromFileTTF(CMAKE_SOURCE_DIR "/lib/imgui-1.88/misc/fonts/Roboto-Medium.ttf", 8.0f);
 
     // Enable depth test:
     glEnable(GL_DEPTH_TEST);
@@ -283,7 +294,7 @@ int main(int argc, char** argv)
         glfwGetFramebufferSize(window, &display_w, &display_h);
 
         // Subtract right menu:
-        display_w -= MENU_WIDTH;
+        display_w -= menuWidth;
 
         // Create the GUI:
         {
@@ -299,7 +310,7 @@ int main(int argc, char** argv)
 
             // Create Window with settings:
             ImGui::SetNextWindowPos(ImVec2(0,0));
-            ImGui::SetNextWindowSize(ImVec2(float(MENU_WIDTH),float(display_h)));
+            ImGui::SetNextWindowSize(ImVec2(float(menuWidth),float(display_h)));
             ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 
             ImGui::Separator();
@@ -394,7 +405,7 @@ int main(int argc, char** argv)
                         ImGui::PushStyleColor(ImGuiCol_Button, IMGUI_BUTTONCOL_DISABLED);
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IMGUI_BUTTONCOL_DISABLED_HOVER);
                     }
-                    if(ImGui::Button("Open Window", ImVec2(ImGui::GetContentRegionAvail().x, 24))){
+                    if(ImGui::Button("Open Window", ImVec2(ImGui::GetContentRegionAvail().x, 24 * dpiYScale))){
                         isFilterWindowOpen = !isFilterWindowOpen;
                     }
                     if(isOpenTmp){
@@ -510,8 +521,8 @@ int main(int argc, char** argv)
 
             if(isFilterWindowOpen){
                 ImGui::SetNextWindowPos(ImVec2(float(display_w),0));
-                ImGui::SetNextWindowSize(ImVec2(float(MENU_WIDTH),float(display_h)));
-                display_w -= MENU_WIDTH;
+                ImGui::SetNextWindowSize(ImVec2(float(menuWidth),float(display_h)));
+                display_w -= menuWidth;
                 ImGui::Begin("PC Filters", &isFilterWindowOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 if (ImGui::BeginCombo("##1236673", "Select Filter to Add ..."))
@@ -661,7 +672,7 @@ int main(int argc, char** argv)
         lastMousePosition = ImGui::GetMousePos();
 
         // Setup the GL viewport
-        glViewport(MENU_WIDTH, 0, display_w, display_h);
+        glViewport(menuWidth, 0, display_w, display_h);
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
