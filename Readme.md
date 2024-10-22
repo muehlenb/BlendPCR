@@ -18,7 +18,6 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
  - **CMake** ≥ 3.11
  - **OpenGL** ≥ 3.3
  - **[Azure Kinect SDK 1.41](https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/docs/usage.md)**: Required to load and stream the CWIPC-SXR dataset.
- - **[nlohmann/json](https://github.com/nlohmann/json)**: Required to load the configuration file of the CWIPC-SXR dataset.
  
 ### Optional:
  - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of `BlendPCR`, so even without CUDA the same visual quality is achieved as presented in the paper.
@@ -26,6 +25,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 *Additionally, this project uses small open-source libraries that we have directly integrated into our source code, so no installation is required. You can find them in the `lib` folder. 
 A big thank you to the developers of
 [Dear ImGui 1.88](https://github.com/ocornut/imgui),
+[nlohmann/json](https://github.com/nlohmann/json),
 [GLFW 3.3](https://www.glfw.org/),
 [stb_image.h](https://github.com/nothings/stb),
 [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader),
