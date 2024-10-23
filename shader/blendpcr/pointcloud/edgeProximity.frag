@@ -1,4 +1,4 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
 
 #version 330 core

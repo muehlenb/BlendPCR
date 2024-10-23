@@ -1,5 +1,6 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
+
 #pragma once
 
 #include "src/util/math/Mat4.h"

@@ -1,4 +1,4 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Gabriel Zachmann, Andre Mühlenbrock (muehlenb@uni-bremen.de)
 //
 // This is a ported version of the C++ normal estimation implemented by

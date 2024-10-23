@@ -1,4 +1,4 @@
-// © 2022, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
 
 // Include the GUI:
@@ -271,8 +271,9 @@ int main(int argc, char** argv)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     ImGui::FileBrowser fileDialog;
-    fileDialog.SetTitle("title");
+    fileDialog.SetTitle("Select 'cameraconfig.json' of CWIPC-SXR dataset:");
     fileDialog.SetTypeFilters({ ".json" });
+    fileDialog.SetWindowSize(1060,620);
 
     // Main loop which is executed every frame until the window is closed:
     while (!glfwWindowShouldClose(window))
@@ -312,11 +313,21 @@ int main(int argc, char** argv)
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 ImGui::Combo("##1", &pcStreamerItemIdx, Streamer::availableStreamerNames, Streamer::availableStreamerNum);
                 ImGui::Separator();
+
+                std::shared_ptr<FileStreamer> pcFileStreamer = std::dynamic_pointer_cast<FileStreamer>(pcStreamer);
+                if(pcFileStreamer != nullptr){
+                    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                    if(ImGui::Button("Load new Scene")){
+                        fileDialog.Open();
+                        pcFileStreamer->isPlaying = false;
+                    }
+                    ImGui::Separator();
+                }
                 ImGui::Text("");
                 ImGui::Separator();
                 ImGui::Text("Settings:");
                 ImGui::Separator();
-                std::shared_ptr<FileStreamer> pcFileStreamer = std::dynamic_pointer_cast<FileStreamer>(pcStreamer);
+
                 if(pcFileStreamer != nullptr){
                     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                     ImGui::SliderFloat("##123", &pcFileStreamer->currentTime, 0.0f, pcFileStreamer->getTotalTime());
@@ -346,9 +357,8 @@ int main(int argc, char** argv)
 
                 std::shared_ptr<AzureKinectMKVStreamer> pcAzureKinectMKVStreamer = std::dynamic_pointer_cast<AzureKinectMKVStreamer>(pcStreamer);
                 if(pcAzureKinectMKVStreamer != nullptr){
-                    ImGui::Checkbox("Use Indices as Color", &pcAzureKinectMKVStreamer->useColorIndices);
-                    if(ImGui::Button("Load new Scene"))
-                        fileDialog.Open();
+                    ImGui::Checkbox("High Resolution Encoding", &pcAzureKinectMKVStreamer->useColorIndices);
+
                 } else {
                     ImGui::TextWrapped("Please select \"Source\" to load a scene.");
                 }
@@ -452,7 +462,7 @@ int main(int argc, char** argv)
                     ImGui::SliderFloat("Kernel Radius", &pcBlendPCRenderer->kernelRadius, 3, 15);
                     ImGui::SliderFloat("Kernel Spread", &pcBlendPCRenderer->kernelSpread, 1.f, 5.f);
                     ImGui::Separator();
-                    ImGui::Checkbox("Use Indices as Color##2", &pcBlendPCRenderer->useColorIndices);
+                    ImGui::Checkbox("High Resolution Encoding##2", &pcBlendPCRenderer->useColorIndices);
                     ImGui::Separator();
                     ImGui::Text("");
                     ImGui::Separator();

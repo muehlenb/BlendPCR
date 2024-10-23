@@ -1,3 +1,5 @@
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
 #version 330 core
 
 layout (location = 0) in vec3 vInPos;   // the position attribute

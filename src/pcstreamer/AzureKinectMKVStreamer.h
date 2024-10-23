@@ -1,5 +1,7 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
+//
+// Adapted to load the CWIPC-SXR dataset for BlendPCR evaluation
 #pragma once
 
 #include <thread>
