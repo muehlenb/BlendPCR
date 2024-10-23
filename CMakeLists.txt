@@ -17,7 +17,6 @@ endif()
 # Set C++ stardard:
 set(CMAKE_CXX_STANDARD 17)
 
-
 # Enable automatic include of generated files (like paths.h):
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -27,12 +26,28 @@ add_subdirectory(lib/imgui-1.88/)
 # Include GLAD for OpenGL 3.3 Core functionalities:
 add_subdirectory(lib/glad)
 
+# Definieren der Cache-Variablen zuerst
+set(K4A_INCLUDE_DIR "" CACHE PATH "Path to directory which contains k4a and k4arecord includes")
+set(K4A_LIB "" CACHE FILEPATH "Path to k4a.lib")
+set(K4A_RECORD_LIB "" CACHE FILEPATH "Path to k4arecord.lib")
+
+# Plattformspezifische Default-Werte setzen
+if(WIN32)
+    # Setze nur die Default-Werte, wenn die Benutzervariablen nicht bereits gesetzt wurden
+    if("${K4A_INCLUDE_DIR}" STREQUAL "")
+        set(K4A_INCLUDE_DIR "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\include" CACHE PATH "Path to directory which contains k4a and k4arecord includes" FORCE)
+    endif()
+    if("${K4A_LIB}" STREQUAL "")
+        set(K4A_LIB "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\windows-desktop\\amd64\\release\\lib\\k4a.lib" CACHE FILEPATH "Path to k4a.lib" FORCE)
+    endif()
+    if("${K4A_RECORD_LIB}" STREQUAL "")
+        set(K4A_RECORD_LIB "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\windows-desktop\\amd64\\release\\lib\\k4arecord.lib" CACHE FILEPATH "Path to k4arecord.lib" FORCE)
+    endif()
+endif()
+
+
 # OpenMP (normally installed):
 find_package(OpenMP)
-
-# Find K4A library
-find_package(k4a CONFIG REQUIRED)
-find_package(k4arecord CONFIG REQUIRED)
 
 # Default headers (which are usable without external libraries):
 set(DEFAULT_HEADERS
@@ -205,8 +220,9 @@ endif()
 target_compile_definitions(BlendPCR PRIVATE USE_KINECT)
 
 # Azure Kinect libraries
-target_include_directories(BlendPCR PRIVATE k4a::k4a)
-target_link_libraries(BlendPCR PRIVATE k4a::k4a k4a::k4arecord)
+target_include_directories(BlendPCR PRIVATE ${K4A_INCLUDE_DIR})
+target_link_libraries(BlendPCR PRIVATE ${K4A_LIB})
+target_link_libraries(BlendPCR PRIVATE ${K4A_RECORD_LIB})
 
 # OpenMP
 target_link_libraries(BlendPCR PUBLIC OpenMP::OpenMP_CXX)

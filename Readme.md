@@ -1,5 +1,5 @@
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | [Paper](https://link_to_eg_digital_library)
+#### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | Paper
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
@@ -17,7 +17,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 ### Required:
  - **CMake** ≥ 3.11
  - **OpenGL** ≥ 3.3
- - **[Azure Kinect SDK 1.41](https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/docs/usage.md)**: Required to load and stream the CWIPC-SXR dataset.
+ - **Azure Kinect SDK 1.41**: Required to load and stream the CWIPC-SXR dataset.
  
 ### Optional:
  - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of `BlendPCR`, so even without CUDA the same visual quality is achieved as presented in the paper.
@@ -32,7 +32,23 @@ A big thank you to the developers of
 [imfilebrowser](https://github.com/AirGuanZ/imgui-filebrowser), and
 [GLAD](https://gen.glad.sh/).*
 ## Installation
-TODO
+### Azure Kinect SDK 1.4.1
+This project has been tested with Azure Kinect SDKs version 1.4.1, although other SDK versions may also be compatible. 
+
+On Windows, you can install `Azure Kinect SDK 1.4.1.exe` from the official website using the default paths. Once installed, the program should be buildable and executable, since the *CMakeLists.txt* is configured to search at default paths.
+
+If you use custom paths or are operating on Linux, please set the following CMAKE-variables:
+ - `K4A_INCLUDE_DIR` to the directory containing the `k4a` and `k4arecord` folders with the include files. 
+ - `K4A_LIB` to the file path of `k4a.lib` 
+ - `K4A_RECORD_LIB` to the file path of `k4arecord.lib`
+
+**Note:** Current usage of the *k4a* and *k4arecord* libraries included with **vcpkg** might lead to errors, as both libraries seem to be configured to create an spdlog instance with the same name.
+
+### BlendPCR
+
+ 1) After installing Azure Kinect SDK 1.4.1, simply clone the BlendPCR repository and run CMake. 
+ 2) If you don't use Windows or installed the Azure Kinect SDK to a custom path, configure the variables above. 
+ 3) Build & Run.
 
 ## Run
 
