@@ -16,10 +16,14 @@ We provide pre-built binaries for Windows (64-bit): [Download (Windows, 64Bit)](
 ### Required:
  - **CMake** ≥ 3.11
  - **OpenGL** ≥ 3.3
- - **Azure Kinect SDK 1.41**: Required to load and stream the CWIPC-SXR dataset.
- 
+ - **C++ Compiler**, e.g. MSVC v143
+ - **Azure Kinect SDK 1.4.1**: Required to load and stream the CWIPC-SXR dataset.
+
+*Note: As the C++ compiler, we have currently only tested MSVC, but other compilers that support the Azure Kinect SDK 1.4.1 are likely to work as well.*
+
 ### Optional:
- - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of **BlendPCR**, so even without CUDA almost the same visual quality is achieved as presented in the paper.
+ - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of *BlendPCR*, so even without CUDA almost the same visual quality is achieved as presented in the paper.
+ 
 
 *Additionally, this project uses small open-source libraries that we have directly integrated into our source code, so no installation is required. You can find them in the `lib` folder. 
 A big thank you to the developers of
@@ -30,7 +34,7 @@ A big thank you to the developers of
 [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader),
 [imfilebrowser](https://github.com/AirGuanZ/imgui-filebrowser), and
 [GLAD](https://gen.glad.sh/).*
-## Build Source
+## Build from Source
 ### Azure Kinect SDK 1.4.1
 This project has been tested with Azure Kinect SDKs version 1.4.1, although other SDK versions may also be compatible. 
 
