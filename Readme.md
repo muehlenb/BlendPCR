@@ -3,7 +3,7 @@
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
-We provide prebuild binaries for Windows (64-bit): [Download (Windows, 64Bit)]()
+We provide pre-built binaries for Windows (64-bit): [Download (Windows, 64Bit)]()
 
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
@@ -19,7 +19,7 @@ We provide prebuild binaries for Windows (64-bit): [Download (Windows, 64Bit)]()
  - **Azure Kinect SDK 1.41**: Required to load and stream the CWIPC-SXR dataset.
  
 ### Optional:
- - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of `BlendPCR`, so even without CUDA the same visual quality is achieved as presented in the paper.
+ - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of **BlendPCR**, so even without CUDA almost the same visual quality is achieved as presented in the paper.
 
 *Additionally, this project uses small open-source libraries that we have directly integrated into our source code, so no installation is required. You can find them in the `lib` folder. 
 A big thank you to the developers of
@@ -30,7 +30,7 @@ A big thank you to the developers of
 [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader),
 [imfilebrowser](https://github.com/AirGuanZ/imgui-filebrowser), and
 [GLAD](https://gen.glad.sh/).*
-## Installation
+## Build Source
 ### Azure Kinect SDK 1.4.1
 This project has been tested with Azure Kinect SDKs version 1.4.1, although other SDK versions may also be compatible. 
 
@@ -53,7 +53,11 @@ If you use custom paths or are operating on Linux, please set the following CMAK
 ![image](images/screenshot.jpg)
 
 ### CWIPC-SXR Dataset
-To run the renderer, download 
+To use the renderer, point cloud recordings from seven cameras are required simultaneously, which must conform to the format of the CWIPC-SXR dataset.
+
+You can download the CWIPC-SXR dataset here: **[CWIPC-SXR Dataset](https://www.dis.cwi.nl/cwipc-sxr-dataset/downloads/)**. 
+
+It is recommended to download only the `dataset_hierarchy.tgz`, which provides metadata for all scenes, as the entire dataset is very large (1.6TB). To download a specific scene, such as the *S3 Flight Attendant* scene, navigate to the `s3_flight_attendant/r1_t1/` directory and run the `download_raw.sh` file, which downloads the `.mkv` recordings from all seven cameras. After downloading, ensure that the `.mkv` recordings are located in the `raw_files` folder. The scene is now ready to be opened in this software project.
 
 ### Source Mode
 When loading the CWIPC-SXR dataset, you have two options:
