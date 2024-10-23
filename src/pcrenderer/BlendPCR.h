@@ -1,4 +1,4 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// © 2024, CGVR (https://cgvr.informatik.uni-bremen.de/),
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
 #pragma once
 
@@ -370,7 +370,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_pcf_erosion[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
 
-                generateAndBind2DTexture(texture2D_pcf_erosion[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
+                generateAndBind2DTexture(texture2D_pcf_erosion[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_erosion[cameraID], 0);
             }
 
@@ -381,7 +381,7 @@ class BlendPCR : public Renderer {
                 glGenFramebuffers(1, &fbo_pcf_holeFilling[cameraID]);
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
 
-                generateAndBind2DTexture(texture2D_pcf_holeFilledVertices[cameraID], imageWidth, imageHeight, GL_RGB32F, GL_RGB, GL_FLOAT, GL_NEAREST);
+                generateAndBind2DTexture(texture2D_pcf_holeFilledVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID], 0);
 
                 generateAndBind2DTexture(texture2D_pcf_holeFilledRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
@@ -475,7 +475,11 @@ class BlendPCR : public Renderer {
     }
 
 public:
+#ifdef USE_CUDA
+    bool useReimplementedFilters = false;
+#else
     bool useReimplementedFilters = true;
+#endif
 
     float implicitH = 0.01f;
     float kernelRadius = 10.f;
@@ -677,7 +681,7 @@ public:
                 rejectionShader.setUniform("pointCloud", 1);
 
                 glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
+                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
                 rejectionShader.setUniform("colorTexture", 2);
 
                 rejectionShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);

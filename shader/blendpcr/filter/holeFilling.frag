@@ -19,13 +19,14 @@ layout (location = 1) out vec4 FragColor;
 void main()
 {
     vec2 texelSize = 1.0 / textureSize(inputVertices, 0);
+
     vec3 p = texture(inputVertices, vScreenPos).rgb;
     vec4 pCol = texture(inputColors, vScreenPos).rgba;
 
     // If point is valid, we don't need to fill it:
     if(!isnan(p.x) && p.z >= 0.01f){
         FragPosition = vec4(p, 1.0);
-        FragColor = pCol + vec4(0.0, 0.5, 0.0, 0.0);
+        FragColor = pCol;
         return;
     }
 
@@ -65,15 +66,16 @@ void main()
     }
 
     vec2 xyPart = texture(lookupImageTo3D, vScreenPos).rg;
+
     if(validNeighbors / float(totalNeighbors) >= requiredValidNeighborRatio){
         float repairedLength = sumDepth / sumWeight;
-        float repairedDepth = repairedLength / sqrt(xyPart.x*xyPart.x + xyPart.y*xyPart.y + 1);
+        float repairedDepth = repairedLength / sqrt(xyPart.x * xyPart.x + xyPart.y * xyPart.y + 1);
 
         FragPosition = vec4(xyPart.x * repairedDepth, xyPart.y * repairedDepth, repairedDepth, 1.0);
-        FragColor = vec4(1.0, 0.0, 1.0, 1.0); //vec4(sumCol / sumWeight, 1.0);
+        FragColor = vec4(sumCol / sumWeight, 1.0);
         return;
     }
 
-    FragPosition = vec4(p, 1.0);
-    FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+    FragPosition = vec4(0.0, 0.0, 0.0, 1.0);
+    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
