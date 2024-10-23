@@ -81,10 +81,9 @@ When loading the CWIPC-SXR dataset, you have two options:
 After choosing your preferred mode, a file dialog will appear, prompting you to select the `cameraconfig.json` file for the scene you wish to load. Playback will commence a few seconds or minutes after the selection, depending on the chosen Source Mode.
 
 ### Filters
-Die Filter-Section ist für die implementierten CUDA-Filter gedacht. Wenn ohne CUDA kompiliert wird, können keine Filter gewählt werden.
+The filter section is intended for the implemented CUDA filters. If compiled without CUDA, no filters can be selected.
 
-In dieser Software-Version zur Verfügung stehen:
-
+When compiled with CUDA, the used filter configuration which was used in the paper is activated by default.
 
 ### Render Technique
 You can switch between following rendering techniques:
