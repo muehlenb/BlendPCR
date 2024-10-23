@@ -1,7 +1,9 @@
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | Paper
+#### [Project Page](https://cgvr.cs.uni-bremen.de/projects/blendpcr) |  [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | Paper (available soon)
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
+
+We provide prebuild binaries for Windows (64-bit): [Download (Windows, 64Bit)]()
 
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
@@ -10,10 +12,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
  
 ![image](images/teaser.jpg)
 
-
-
-
-## Requirements
+## Build Requirements
 ### Required:
  - **CMake** ≥ 3.11
  - **OpenGL** ≥ 3.3
@@ -51,7 +50,10 @@ If you use custom paths or are operating on Linux, please set the following CMAK
  3) Build & Run.
 
 ## Run
+![image](images/screenshot.jpg)
 
+### CWIPC-SXR Dataset
+To run the renderer, download 
 
 ### Source Mode
 When loading the CWIPC-SXR dataset, you have two options:
