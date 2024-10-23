@@ -53,7 +53,7 @@ If you use custom paths or are operating on Linux, please set the following CMAK
 ![image](images/screenshot.jpg)
 
 ### CWIPC-SXR Dataset
-To use the renderer, point cloud recordings from seven cameras are required simultaneously, which must conform to the format of the CWIPC-SXR dataset.
+To use the renderer out-of-the-box, RGB-D recordings from seven Azure Kinect sensors are required, and these recordings must conform to the format of the CWIPC-SXR dataset.
 
 You can download the CWIPC-SXR dataset here: **[CWIPC-SXR Dataset](https://www.dis.cwi.nl/cwipc-sxr-dataset/downloads/)**. 
 
