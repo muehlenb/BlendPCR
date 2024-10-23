@@ -70,7 +70,7 @@ class AzureKinectMKVStream {
     }
 
 public:
-    AzureKinectMKVStream(std::string filepath, Mat4f transformation, bool& useColorIndices)
+    AzureKinectMKVStream(std::string filepath, Mat4f transformation, bool& useColorIndices, bool useBuffer, int maxFrameCount)
         : transformation(transformation)
         , useColorIndices(useColorIndices)
     {
