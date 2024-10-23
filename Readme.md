@@ -80,6 +80,23 @@ When loading the CWIPC-SXR dataset, you have two options:
 
 After choosing your preferred mode, a file dialog will appear, prompting you to select the `cameraconfig.json` file for the scene you wish to load. Playback will commence a few seconds or minutes after the selection, depending on the chosen Source Mode.
 
+### Filters
+Die Filter-Section ist für die implementierten CUDA-Filter gedacht. Wenn ohne CUDA kompiliert wird, können keine Filter gewählt werden.
+
+In dieser Software-Version zur Verfügung stehen:
+
+
+### Render Technique
+You can switch between following rendering techniques:
+
+- **Splats (Uniform):** Using uniform splats with a fixed (configurable) size.
+- **Naive Mesh:** Separate Meshes reconstructed for each camera, which are not blended.
+- **BlendPCR:** The BlendPCR implementation, which we described in our paper. Note that you can activate the 'Reimpl. Filters' option, which enables a GLSL reimplementation of the CUDA filters we used in the evaluation of our paper.
+
+*Note: For High Resolution Color Textures - named **BlendPCR (HR)** in the paper -, enable **High Resolution Encoding** both in the Source Mode **and** in the BlendPCR renderer.*
+
+
+
 ## Remarks
 ### Point Cloud Filters via CUDA
 In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer utilized the same set of CUDA-implemented filters: *ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*, located in the `src/pcfilter/` folder. These filters are enabled by default when the project is compiled with CUDA support (I.e. if `USE_CUDA` is set to `ON` in the CMAKE configuration).
