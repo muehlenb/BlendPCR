@@ -3,8 +3,6 @@
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
-We provide pre-built binaries for Windows (64-bit): [Download (Windows, 64Bit)]()
-
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
 
@@ -12,7 +10,18 @@ We provide pre-built binaries for Windows (64-bit): [Download (Windows, 64Bit)](
  
 ![image](images/teaser.jpg)
 
+
+## Pre-built Binaries
+If you only want to test the software, including the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
+- [Download Windows (64-Bit)](), without CUDA for all graphic cards.
+
+
 ## Build Requirements
+
+Note that we also provide pre-built binaries for Windows, and you do not need to build from source code just to test: 
+
+
+
 ### Required:
  - **CMake** ≥ 3.11
  - **OpenGL** ≥ 3.3
