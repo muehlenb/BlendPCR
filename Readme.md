@@ -1,5 +1,5 @@
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### [Video](https://cgvr.cs.uni-bremen.de/projects/blendpcr/video.mp4) | Paper (available soon)
+#### Video (available soon) | Paper (available soon)
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
