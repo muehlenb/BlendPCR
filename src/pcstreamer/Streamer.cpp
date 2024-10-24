@@ -19,7 +19,5 @@ std::shared_ptr<Streamer> Streamer::constructStreamerInstance(int type, std::str
     return nullptr;
 };
 
-
 int Streamer::BufferedMaxFrameCount = 200;
-// Config for buffered loader, should be placed in AzureKinectMKVStreamer:
 int Streamer::BufferedStartFrameOffset = 90;
