@@ -103,6 +103,10 @@ public:
         // Set automatic color conversion when loading the recordings:
         k4a_playback_set_color_conversion(playback_handle, K4A_IMAGE_FORMAT_COLOR_BGRA32);
 
+        // Ensure look up tables are available:
+        createLookupTables();
+        createColorIndexImage();
+
         // Get depth to color transform:
         {
             k4a_calibration_extrinsics_t extr = calibration.extrinsics[0][1];
@@ -157,9 +161,6 @@ public:
         {
             std::cerr << "Failed to seek to beginning of the recording\n";
         }
-
-        createLookupTables();
-        createColorIndexImage();
 
         successfullyOpened = true;
     }
