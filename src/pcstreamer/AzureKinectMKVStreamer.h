@@ -37,8 +37,9 @@ public:
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastFrameTime;
 
-    AzureKinectMKVStreamer(std::string cameraConfigPath, bool useBuffer = false, int maxFrameCount = 0){
-        // Erhalte den enthaltenden Ordner (parent path)
+    AzureKinectMKVStreamer(std::string cameraConfigPath, bool useBuffer = true, int maxFrameCount = 0){
+        allowFrameSkipping = useBuffer;
+
         std::string rootPath = std::filesystem::path(cameraConfigPath).parent_path().string() + "/";
 
         std::ifstream f(cameraConfigPath);
@@ -68,7 +69,7 @@ public:
             streams[i] = std::make_shared<AzureKinectMKVStream>(rootPath + filename, matrix, useColorIndices, useBuffer, maxFrameCount);
         }
 
-		#pragma omp parallel for 
+        #pragma omp parallel for
         for(int i = 0; i < numCameras; ++i){
             streams[i]->init();
         }

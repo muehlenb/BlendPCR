@@ -43,6 +43,9 @@ class AzureKinectMKVStream {
 
     bool& useColorIndices;
 
+    bool useBuffer;
+    std::vector<std::shared_ptr<OrganizedPointCloud>> preloadedBuffer;
+
     void createColorIndexImage(){
         k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32, width, height, width * 4, &colorIndexImage);
         uint8_t* buffer = k4a_image_get_buffer(colorIndexImage);
@@ -73,6 +76,7 @@ public:
     AzureKinectMKVStream(std::string filepath, Mat4f transformation, bool& useColorIndices, bool useBuffer, int maxFrameCount)
         : transformation(transformation)
         , useColorIndices(useColorIndices)
+        , useBuffer(useBuffer)
     {
         if (k4a_playback_open(filepath.c_str(), &playback_handle) != K4A_RESULT_SUCCEEDED)
         {
@@ -96,6 +100,9 @@ public:
     }
 
     void init(){
+        // Set automatic color conversion when loading the recordings:
+        k4a_playback_set_color_conversion(playback_handle, K4A_IMAGE_FORMAT_COLOR_BGRA32);
+
         // Get depth to color transform:
         {
             k4a_calibration_extrinsics_t extr = calibration.extrinsics[0][1];
@@ -123,8 +130,16 @@ public:
 
                 timestamps.push_back(timestamp_usec / 1000000.0);
 
-                // Ressourcen freigeben
-                k4a_image_release(depth_image);
+                // If the buffer should be used, already generate the point cloud:
+                if(useBuffer){
+                    preloadedBuffer.push_back(generatePointCloudFromCapture(capture));
+
+                    if(preloadedBuffer.size() >= 200){
+                        break;
+                    }
+                } else {
+                    k4a_image_release(depth_image);
+                }
             } else {
                 //std::cerr << "No depth image available in this capture." << std::endl;
             }
@@ -142,8 +157,6 @@ public:
         {
             std::cerr << "Failed to seek to beginning of the recording\n";
         }
-
-        k4a_playback_set_color_conversion(playback_handle, K4A_IMAGE_FORMAT_COLOR_BGRA32);
 
         createLookupTables();
         createColorIndexImage();
@@ -253,6 +266,91 @@ public:
         }
     }
 
+    std::shared_ptr<OrganizedPointCloud> generatePointCloudFromCapture(k4a_capture_t& capture){
+        k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
+        k4a_image_t color_image = k4a_capture_get_color_image(capture);
+
+        k4a_image_t transformed_color_image;
+
+        if (depth_image != nullptr && color_image != nullptr) {
+            int width = k4a_image_get_width_pixels(depth_image);
+            int height = k4a_image_get_height_pixels(depth_image);
+
+            std::shared_ptr<OrganizedPointCloud> pc = std::make_shared<OrganizedPointCloud>(width, height);
+
+            int highres_width = k4a_image_get_width_pixels(color_image);
+            int highres_height = k4a_image_get_height_pixels(color_image);
+
+            // Create highres texture:
+            if(highres_width == 2048 && highres_height == 1536 && useColorIndices){
+                uint8_t* buffer = k4a_image_get_buffer(color_image);
+
+                pc->highResColors = new Vec4b[highres_width * highres_height];
+                pc->highResWidth = highres_width;
+                pc->highResHeight = highres_height;
+                std::memcpy(pc->highResColors, buffer, highres_width * highres_height * sizeof(Vec4b));
+            }
+
+            k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32, width, height, width * 4 * sizeof(uint8_t), &transformed_color_image);
+            if (k4a_transformation_color_image_to_depth_camera(transformation_handle, depth_image, useColorIndices ? colorIndexImage : color_image, transformed_color_image) != K4A_RESULT_SUCCEEDED)
+            {
+                std::cout << "A color image could not be transformed to the depth image." << std::endl;
+
+                k4a_image_release(depth_image);
+                k4a_image_release(transformed_color_image);
+                k4a_image_release(color_image);
+                k4a_capture_release(capture);
+                return nullptr;
+            }
+
+            k4a_image_t pcimg;
+            if (k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM, width, height, width * 3 * (int)sizeof(int16_t),&pcimg) != K4A_RESULT_SUCCEEDED){
+                std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
+                k4a_image_release(depth_image);
+                k4a_image_release(transformed_color_image);
+                k4a_image_release(color_image);
+                k4a_capture_release(capture);
+                return nullptr;
+            }
+
+            if (k4a_transformation_depth_image_to_point_cloud(transformation_handle, depth_image, K4A_CALIBRATION_TYPE_DEPTH, pcimg) != K4A_RESULT_SUCCEEDED) {
+                std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
+                k4a_image_release(depth_image);
+                k4a_image_release(transformed_color_image);
+                k4a_image_release(color_image);
+                k4a_capture_release(capture);
+                return nullptr;
+            }
+
+            pc->positions = new Vec4f[width * height];
+            pc->colors = new Vec4b[width * height];
+            pc->modelMatrix = transformation * depthToColorTransform;
+            pc->lookupImageTo3D = DFToCS;
+            pc->lookup3DToImage = lookupTable3DToImage;
+            pc->lookup3DToImageSize = LOOKUP_TABLE_SIZE;
+            pc->frameID = currentFrame;
+            pc->width = width;
+            pc->height = height;
+
+            int16_t* pcdata = (int16_t*)(void*)k4a_image_get_buffer(pcimg);
+            uint8_t* bgradata = k4a_image_get_buffer(transformed_color_image);
+            for(int y = 0; y < height; ++y){
+                for(int x = 0; x < width; ++x){
+                    int idx = y * width + x;
+                    pc->positions[idx] = Vec4f(pcdata[3 * idx] / 1000.f, pcdata[3 * idx + 1] / 1000.f, pcdata[3 * idx + 2] / 1000.f, 1.f);
+                }
+            }
+
+            std::memcpy(pc->colors, bgradata, width * height * sizeof(int));
+
+            k4a_image_release(depth_image);
+            k4a_image_release(transformed_color_image);
+            k4a_image_release(color_image);
+            return pc;
+        }
+
+        return nullptr;
+    }
 
     std::shared_ptr<OrganizedPointCloud> syncImage(double timeStamp){
         double specificTimestep = 0.f;
@@ -264,98 +362,24 @@ public:
             }
         }
 
-        // Seek to timestamp:
-        k4a_result_t seek_result = k4a_playback_seek_timestamp(playback_handle, uint64_t(specificTimestep * 1000000), K4A_PLAYBACK_SEEK_BEGIN);
-        if (seek_result != K4A_RESULT_SUCCEEDED)
-        {
-            return nullptr;
-        }
-
-        // Read capture:
-        k4a_capture_t capture = NULL;
-        if (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED) {
-            k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
-            k4a_image_t color_image = k4a_capture_get_color_image(capture);
-
-            k4a_image_t transformed_color_image;
-
-            if (depth_image != nullptr && color_image != nullptr) {
-                int width = k4a_image_get_width_pixels(depth_image);
-                int height = k4a_image_get_height_pixels(depth_image);
-
-                std::shared_ptr<OrganizedPointCloud> pc = std::make_shared<OrganizedPointCloud>(width, height);
-
-                int highres_width = k4a_image_get_width_pixels(color_image);
-                int highres_height = k4a_image_get_height_pixels(color_image);
-
-                // Create highres texture:
-                if(highres_width == 2048 && highres_height == 1536 && useColorIndices){
-                    uint8_t* buffer = k4a_image_get_buffer(color_image);
-
-                    pc->highResColors = new Vec4b[highres_width * highres_height];
-                    pc->highResWidth = highres_width;
-                    pc->highResHeight = highres_height;
-                    std::memcpy(pc->highResColors, buffer, highres_width * highres_height * sizeof(Vec4b));
-                }
-
-                k4a_image_create(K4A_IMAGE_FORMAT_COLOR_BGRA32, width, height, width * 4 * sizeof(uint8_t), &transformed_color_image);
-                if (k4a_transformation_color_image_to_depth_camera(transformation_handle, depth_image, useColorIndices ? colorIndexImage : color_image, transformed_color_image) != K4A_RESULT_SUCCEEDED)
-                {
-                    std::cout << "A color image could not be transformed to the depth image." << std::endl;
-
-                    k4a_image_release(depth_image);
-                    k4a_image_release(transformed_color_image);
-                    k4a_image_release(color_image);
-                    k4a_capture_release(capture);
-                    return nullptr;
-                }
-
-                k4a_image_t pcimg;
-                if (k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM, width, height, width * 3 * (int)sizeof(int16_t),&pcimg) != K4A_RESULT_SUCCEEDED){
-                    std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
-                    k4a_image_release(depth_image);
-                    k4a_image_release(transformed_color_image);
-                    k4a_image_release(color_image);
-                    k4a_capture_release(capture);
-                    return nullptr;
-                }
-
-                if (k4a_transformation_depth_image_to_point_cloud(transformation_handle, depth_image, K4A_CALIBRATION_TYPE_DEPTH, pcimg) != K4A_RESULT_SUCCEEDED) {
-                    std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
-                    k4a_image_release(depth_image);
-                    k4a_image_release(transformed_color_image);
-                    k4a_image_release(color_image);
-                    k4a_capture_release(capture);
-                    return nullptr;
-                }
-
-                pc->positions = new Vec4f[width * height];
-                pc->colors = new Vec4b[width * height];
-                pc->modelMatrix = transformation * depthToColorTransform;
-                pc->lookupImageTo3D = DFToCS;
-                pc->lookup3DToImage = lookupTable3DToImage;
-                pc->lookup3DToImageSize = LOOKUP_TABLE_SIZE;
-                pc->frameID = currentFrame;
-                pc->width = width;
-                pc->height = height;
-
-                int16_t* pcdata = (int16_t*)(void*)k4a_image_get_buffer(pcimg);
-                uint8_t* bgradata = k4a_image_get_buffer(transformed_color_image);
-                for(int y = 0; y < height; ++y){
-                    for(int x = 0; x < width; ++x){
-                        int idx = y * width + x;
-                        pc->positions[idx] = Vec4f(pcdata[3 * idx] / 1000.f, pcdata[3 * idx + 1] / 1000.f, pcdata[3 * idx + 2] / 1000.f, 1.f);
-                    }
-                }
-
-                std::memcpy(pc->colors, bgradata, width * height * sizeof(int));
-
-                k4a_image_release(depth_image);
-                k4a_image_release(transformed_color_image);
-                k4a_image_release(color_image);
-                k4a_capture_release(capture);
-                return pc;
+        if(useBuffer){
+            if(currentFrame >= 0 && currentFrame < preloadedBuffer.size())
+                return preloadedBuffer[currentFrame];
+        } else {
+            // Seek to timestamp and load:
+            k4a_result_t seek_result = k4a_playback_seek_timestamp(playback_handle, uint64_t(specificTimestep * 1000000), K4A_PLAYBACK_SEEK_BEGIN);
+            if (seek_result != K4A_RESULT_SUCCEEDED)
+            {
+                return nullptr;
             }
+
+            // Read capture:
+            k4a_capture_t capture = NULL;
+            if (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED) {
+                std::shared_ptr<OrganizedPointCloud> pc = generatePointCloudFromCapture(capture);
+                k4a_capture_release(capture);
+            }
+            return nullptr;
         }
         return nullptr;
     }
