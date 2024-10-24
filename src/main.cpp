@@ -506,10 +506,11 @@ int main(int argc, char** argv)
                 ImGui::Separator();
                 ImGui::Text("Integration: %.3f ms", integrationTime);
                 ImGui::Separator();
-                ImGui::Text("Render Loop (synced): %.3f ms", worldCPUTime);
+                ImGui::Text("Render Loop (synced)*: %.3f ms", worldCPUTime);
+                ImGui::Text("");
+                ImGui::Text("*Includes GUI, PC Passes & Screen Passes");
             }
 
-            ImGui::Text("");
             ImGui::Separator();
             if(ImGui::CollapsingHeader("Credits", ImGuiTreeNodeFlags_DefaultOpen)){
                 ImGui::Text("Computergraphics and Virtual Reality");
