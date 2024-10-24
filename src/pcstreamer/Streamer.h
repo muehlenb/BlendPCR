@@ -27,6 +27,11 @@ protected:
     std::function<void(std::vector<std::shared_ptr<OrganizedPointCloud>>)> callback;
 
 public:
+    // Config for buffered loader, should be placed in AzureKinectMKVStreamer:
+    static int BufferedMaxFrameCount;
+    // Config for buffered loader, should be placed in AzureKinectMKVStreamer:
+    static int BufferedStartFrameOffset;
+
     /** Registers a callback for new images */
     void setCallback(std::function<void(std::vector<std::shared_ptr<OrganizedPointCloud>>)> cb){
         callback = cb;

@@ -9,6 +9,10 @@ uniform sampler2D pointCloud;
 uniform sampler2D colorTexture;
 uniform mat4 model;
 
+uniform bool shouldClip;
+uniform vec4 clipMin;
+uniform vec4 clipMax;
+
 out vec4 FragColor;
 
 void main()
@@ -24,17 +28,13 @@ void main()
         return;
     }
 
-    //if(isnan(point.x) || isnan(point.y) || isnan(point.z)){
-    //	FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-    //	return;
-    //}
-
-    // Background Removal via cylinder in the mid of the scene:
-    //vec3 modelPoint = (model * vec4(point, 1.0)).xyz;
-    //if(length(modelPoint.xz) > 0.87 || modelPoint.y < 0.05 || modelPoint.y > 1.95){
-    //	FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-    //	return;
-    //}
+    if(shouldClip){
+        vec4 pointWS = model * vec4(point, 1.0);
+        if(pointWS.x < clipMin.x || pointWS.y < clipMin.y || pointWS.z < clipMin.z || pointWS.x > clipMax.x || pointWS.y > clipMax.y || pointWS.z > clipMax.z){
+            FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+            return;
+        }
+    }
 
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
 

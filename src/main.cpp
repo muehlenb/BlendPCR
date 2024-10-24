@@ -323,6 +323,14 @@ int main(int argc, char** argv)
                     }
                     ImGui::Separator();
                 }
+
+                ImGui::Text("");
+                ImGui::Separator();
+                ImGui::Text("CWIPC-SXR (Buffered) Load Settings:");
+                ImGui::SliderInt("Start Frame", &Streamer::BufferedStartFrameOffset, 0, 1000);
+                ImGui::SliderInt("Max Frames", &Streamer::BufferedMaxFrameCount, 0, 1000);
+                ImGui::Text(("Approx. required RAM: " + std::to_string(int(std::ceil(0.07 * Streamer::BufferedMaxFrameCount))) + " GB").c_str());
+                ImGui::Separator();
                 ImGui::Text("");
                 ImGui::Separator();
                 ImGui::Text("Settings:");
@@ -467,6 +475,11 @@ int main(int argc, char** argv)
                     ImGui::Text("");
                     ImGui::Separator();
                     ImGui::Checkbox("Reimpl. Filters", &pcBlendPCRenderer->useReimplementedFilters);
+                    ImGui::Separator();
+                    ImGui::Checkbox("Reimpl. Clipping Filter", &pcBlendPCRenderer->shouldClip);
+                    ImGui::DragFloat3("Clip Min", &pcBlendPCRenderer->clipMin.x, 0.02f, -2.f, 0.5f);
+                    ImGui::DragFloat3("Clip Max", &pcBlendPCRenderer->clipMax.x, 0.02f, -0.5f, 2.f);
+                    ImGui::Separator();
                 }
 
                 ImGui::Separator();

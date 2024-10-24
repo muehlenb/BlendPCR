@@ -481,6 +481,10 @@ public:
     bool useReimplementedFilters = true;
 #endif
 
+    bool shouldClip = true;
+    Vec4f clipMin = Vec4f(-1.0f, 0.05f, -1.0, 0.0);
+    Vec4f clipMax = Vec4f(1.0f, 2.0f, 1.0, 0.0);
+
     float implicitH = 0.01f;
     float kernelRadius = 10.f;
     float kernelSpread = 1.f;
@@ -685,6 +689,9 @@ public:
                 rejectionShader.setUniform("colorTexture", 2);
 
                 rejectionShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
+                rejectionShader.setUniform("shouldClip", shouldClip);
+                rejectionShader.setUniform("clipMin", clipMin);
+                rejectionShader.setUniform("clipMax", clipMax);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);

@@ -7,7 +7,7 @@ in vec2 vScreenPos;
 
 uniform sampler2D inputVertices;
 
-uniform int intensity = 2;
+uniform int intensity = 3;
 uniform float distanceThresholdPerMeter = 0.03f;
 
 layout (location = 0) out vec4 FragPosition;

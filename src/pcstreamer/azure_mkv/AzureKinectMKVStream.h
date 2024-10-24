@@ -44,6 +44,9 @@ class AzureKinectMKVStream {
     bool& useColorIndices;
 
     bool useBuffer;
+    int bufferedMaxFrameCount;
+    int bufferedStartFrameOffset;
+
     std::vector<std::shared_ptr<OrganizedPointCloud>> preloadedBuffer;
 
     void createColorIndexImage(){
@@ -73,10 +76,12 @@ class AzureKinectMKVStream {
     }
 
 public:
-    AzureKinectMKVStream(std::string filepath, Mat4f transformation, bool& useColorIndices, bool useBuffer, int maxFrameCount)
+    AzureKinectMKVStream(std::string filepath, Mat4f transformation, bool& useColorIndices, bool useBuffer, int maxFrameCount, int startFrameOffset)
         : transformation(transformation)
         , useColorIndices(useColorIndices)
         , useBuffer(useBuffer)
+        , bufferedMaxFrameCount(maxFrameCount)
+        , bufferedStartFrameOffset(startFrameOffset)
     {
         if (k4a_playback_open(filepath.c_str(), &playback_handle) != K4A_RESULT_SUCCEEDED)
         {
@@ -125,8 +130,17 @@ public:
 
         std::vector<double> timestamps;
         k4a_capture_t capture = NULL;
+
+        int counter = -1;
         while (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED)
         {
+            ++counter;
+            if(useBuffer && counter < bufferedStartFrameOffset){
+                k4a_capture_release(capture);
+                continue;
+            }
+
+
             k4a_image_t depth_image = k4a_capture_get_depth_image(capture);
             if (depth_image != NULL) {
                 // Erhalte den Timestamp des Tiefenbildes
@@ -138,7 +152,7 @@ public:
                 if(useBuffer){
                     preloadedBuffer.push_back(generatePointCloudFromCapture(capture));
 
-                    if(preloadedBuffer.size() >= 200){
+                    if(preloadedBuffer.size() >= bufferedMaxFrameCount){
                         break;
                     }
                 } else {
@@ -148,7 +162,7 @@ public:
                 //std::cerr << "No depth image available in this capture." << std::endl;
             }
 
-            k4a_capture_release(capture); // Wichtig, um Speicherlecks zu vermeiden
+            k4a_capture_release(capture);
         }
 
         allTimestamps = timestamps;
@@ -379,6 +393,7 @@ public:
             if (k4a_playback_get_next_capture(playback_handle, &capture) == K4A_STREAM_RESULT_SUCCEEDED) {
                 std::shared_ptr<OrganizedPointCloud> pc = generatePointCloudFromCapture(capture);
                 k4a_capture_release(capture);
+                return pc;
             }
             return nullptr;
         }
