@@ -7,7 +7,7 @@ in vec2 vScreenPos;
 
 uniform sampler2D inputVertices;
 
-uniform int intensity = 3;
+uniform int intensity = 10;
 uniform float distanceThresholdPerMeter = 0.03f;
 
 layout (location = 0) out vec4 FragPosition;
@@ -22,8 +22,8 @@ void main()
     FragPosition = vec4(p, 1.0);
     return ;
 
-    for(int dY = -intensity; dY <= intensity; dY += 2){
-        for(int dX = -intensity; dX <= intensity; dX += 2){
+    for(int dY = -intensity; dY <= intensity; dY += 1){
+        for(int dX = -intensity; dX <= intensity; dX += 1){
             float qX = vScreenPos.x + dX * texelSize.x;
             float qY = vScreenPos.y + dY * texelSize.y;
 

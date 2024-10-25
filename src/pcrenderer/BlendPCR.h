@@ -475,13 +475,9 @@ class BlendPCR : public Renderer {
     }
 
 public:
-#ifdef USE_CUDA
-    bool useReimplementedFilters = false;
-#else
     bool useReimplementedFilters = true;
-#endif
-
     bool shouldClip = true;
+
     Vec4f clipMin = Vec4f(-1.0f, 0.05f, -1.0, 0.0);
     Vec4f clipMax = Vec4f(1.0f, 2.0f, 1.0, 0.0);
 
@@ -652,7 +648,7 @@ public:
             }
             endTimeMeasure("2a) Hole Filling Pass", true);
 
-            startTimeMeasure("2a) Erosion Pass", true);
+            startTimeMeasure("2b) Erosion Pass", true);
             for(unsigned int cameraID : cameraIDsThatCanBeRendered){
                 // Erosion Pass:
                 {
@@ -670,10 +666,10 @@ public:
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
             }
-            endTimeMeasure("2a) Hole Filling Pass", true);
+            endTimeMeasure("2b) Hole Filling Pass", true);
         }
 
-        startTimeMeasure("2a) RejectedPass", true);
+        startTimeMeasure("3a) RejectedPass", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Rejected PASS:
             {
@@ -697,9 +693,9 @@ public:
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
         }
-        endTimeMeasure("2a) RejectedPass", true);
+        endTimeMeasure("3a) RejectedPass", true);
 
-        startTimeMeasure("2b) EdgeProximity", true);
+        startTimeMeasure("3b) EdgeProximity", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Edge Distance PASS:
             {
@@ -715,9 +711,9 @@ public:
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
         }
-        endTimeMeasure("2b) EdgeProximity", true);
+        endTimeMeasure("3b) EdgeProximity", true);
 
-        startTimeMeasure("2c) MLS", true);
+        startTimeMeasure("3c) MLS", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Texture a(x) PASS:
             {
@@ -740,9 +736,9 @@ public:
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
         }
-        endTimeMeasure("2c) MLS", true);
+        endTimeMeasure("3c) MLS", true);
 
-        startTimeMeasure("2d) Normal", true);
+        startTimeMeasure("3d) Normal", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // Texture n(x) PASS:
             {
@@ -769,9 +765,9 @@ public:
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
         }
-        endTimeMeasure("2d) Normal", true);
+        endTimeMeasure("3d) Normal", true);
 
-        startTimeMeasure("2e) Influence", true);
+        startTimeMeasure("3e) Influence", true);
         for(unsigned int cameraID : cameraIDsThatCanBeRendered){
             // OVERLAP PASS:
             {
@@ -795,14 +791,14 @@ public:
                 glDrawArrays(GL_TRIANGLES, 0, 6);
             }
         }
-        endTimeMeasure("2e) Influence", true);
+        endTimeMeasure("3e) Influence", true);
 
         glFlush();
         auto time2 = high_resolution_clock::now();
         uploadTime = duration_cast<microseconds>(time2 - time).count() / 1000.f;
 
 
-        startTimeMeasure("3a) RenderMesh", true);
+        startTimeMeasure("4a) RenderMesh", true);
         // Restore viewport for screen rendering:
         glViewport(0, 0, mainViewport[2], mainViewport[3]);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -867,9 +863,9 @@ public:
             glDrawBuffers(1, attachments);
             //gl.glDisable(GL_CULL_FACE);
         }
-        endTimeMeasure("3a) RenderMesh", true);
+        endTimeMeasure("4a) RenderMesh", true);
 
-        startTimeMeasure("3b) MajorCam", true);
+        startTimeMeasure("4b) MajorCam", true);
         glDisable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
 
@@ -914,9 +910,9 @@ public:
             glBindVertexArray(VAO_quad);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-        endTimeMeasure("3b) MajorCam", true);
+        endTimeMeasure("4b) MajorCam", true);
 
-        startTimeMeasure("3c) CamWeights", true);
+        startTimeMeasure("4c) CamWeights", true);
         {
             glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
             glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraWeights);
@@ -936,9 +932,9 @@ public:
             glBindVertexArray(VAO_quad);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-        endTimeMeasure("3c) CamWeights", true);
+        endTimeMeasure("4c) CamWeights", true);
 
-        startTimeMeasure("3d) ScreenMerging", true);
+        startTimeMeasure("4d) ScreenMerging", true);
         // Screen Merging:
         {
             glViewport(mainViewport[0], mainViewport[1], mainViewport[2], mainViewport[3]);
@@ -1004,7 +1000,7 @@ public:
             glBindVertexArray(VAO_quad);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-        endTimeMeasure("3d) ScreenMerging", true);
+        endTimeMeasure("4d) ScreenMerging", true);
 
         GLint maxCombinedTextureImageUnits;
         glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxCombinedTextureImageUnits);

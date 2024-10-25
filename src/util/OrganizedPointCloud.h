@@ -253,10 +253,11 @@ public:
             cudaMemcpy(texCoords, gpuTexCoords, width * height * sizeof(float2), cudaMemcpyDeviceToHost);
 
         gpu = false;
+        freeGPUMemory();
         #endif
     }
 
-    ~OrganizedPointCloud(){
+    void freeGPUMemory(){
         if(gpuPositions != nullptr){
             unusedInitializedGPUMemory.emplace_back(sizeof(Vec4f) * width * height, gpuPositions);
             gpuPositions = nullptr;
@@ -276,6 +277,10 @@ public:
             unusedInitializedGPUMemory.emplace_back(sizeof(TexCoord) * width * height, gpuTexCoords);
             gpuTexCoords = nullptr;
         }
+    }
+
+    ~OrganizedPointCloud(){
+        freeGPUMemory();
 
         if(positions != nullptr){
             delete[] positions;

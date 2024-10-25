@@ -189,6 +189,12 @@ int main(int argc, char** argv)
 
     // Filters:
     std::vector<std::shared_ptr<Filter>> pcFilters;
+
+    /**
+     * Filter pipeline used in paper (don't use it with the buffered streamer!).
+     */
+
+    /*
     #ifdef USE_CUDA
         std::shared_ptr<ClippingFilter> clippingFilter = std::make_shared<ClippingFilter>();
         pcFilters.push_back(clippingFilter);
@@ -196,7 +202,7 @@ int main(int argc, char** argv)
         pcFilters.push_back(holeFiller);
         std::shared_ptr<ErosionFilter> erosionFilter = std::make_shared<ErosionFilter>();
         pcFilters.push_back(erosionFilter);
-    #endif
+    #endif*/
 
     Semaphore pointCloudsAvailableSemaphore;
     Semaphore pointCloudsProcessedSemaphore(1);
@@ -399,8 +405,9 @@ int main(int argc, char** argv)
                 }
             }
 
+#ifdef USE_CUDA
             ImGui::Separator();
-            if(ImGui::CollapsingHeader("Filter", ImGuiTreeNodeFlags_DefaultOpen)){
+            if(ImGui::CollapsingHeader("Cuda Filter", ImGuiTreeNodeFlags_DefaultOpen)){
                 int activeFilters = 0;
                 for(std::shared_ptr<Filter>& filter : pcFilters)
                     activeFilters += filter->isActive;
@@ -424,10 +431,11 @@ int main(int argc, char** argv)
 
                 ImGui::Text("");
             }
+#endif
 
             ImGui::Separator();
 
-            if(ImGui::CollapsingHeader("Render Techique", ImGuiTreeNodeFlags_DefaultOpen)){
+            if(ImGui::CollapsingHeader("Rendering Techique", ImGuiTreeNodeFlags_DefaultOpen)){
                 ImGui::Separator();
                 ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
                 ImGui::Combo("##2", &pcTechniqueItemIdx, Renderer::availableAlgorithmNames, Renderer::availableAlgorithmNum);
