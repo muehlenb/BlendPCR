@@ -268,6 +268,7 @@ class BlendPCR : public Renderer {
                     glDeleteFramebuffers(1, &fbo_screen[cameraID]);
                     glDeleteTextures(1, &texture2D_screenColor[cameraID]);
                     glDeleteTextures(1, &texture2D_screenVertices[cameraID]);
+                    glDeleteTextures(1, &texture2D_screenNormals[cameraID]);
                     glDeleteTextures(1, &texture2D_screenDepth[cameraID]);
                 }
 
@@ -488,6 +489,66 @@ public:
     bool useColorIndices = false;
 
     float uploadTime = 0;
+
+
+    ~BlendPCR(){
+        if(fbo_mini_screen_width != -1){
+            glDeleteFramebuffers(1, &fbo_majorCam);
+            glDeleteTextures(1, &texture2D_majorCam);
+
+            glDeleteFramebuffers(1, &fbo_cameraWeights);
+            glDeleteTextures(1, &texture2D_cameraWeightsA);
+            glDeleteTextures(1, &texture2D_cameraWeightsB);
+        }
+
+        for(int cameraID = 0; cameraID < CAMERA_COUNT; ++cameraID){
+            if(fbo_screen_width != -1){
+                glDeleteFramebuffers(1, &fbo_screen[cameraID]);
+                glDeleteTextures(1, &texture2D_screenColor[cameraID]);
+                glDeleteTextures(1, &texture2D_screenVertices[cameraID]);
+                glDeleteTextures(1, &texture2D_screenDepth[cameraID]);
+            }
+
+
+            glDeleteFramebuffers(1, &fbo_pcf_holeFilling[cameraID]);
+            glDeleteTextures(1, &texture2D_pcf_holeFilledVertices[cameraID]);
+            glDeleteTextures(1, &texture2D_pcf_holeFilledRGB[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_pcf_erosion[cameraID]);
+            glDeleteTextures(1, &texture2D_pcf_erosion[cameraID]);
+
+            glDeleteTextures(1, &texture2D_inputVertices[cameraID]);
+            glDeleteTextures(1, &texture2D_inputRGB[cameraID]);
+            glDeleteTextures(1, &texture2D_inputLookupImageTo3D[cameraID]);
+            glDeleteTextures(1, &highres_colors[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_rejection[cameraID]);
+            glDeleteTextures(1, &texture2D_rejection[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_edgeProximity[cameraID]);
+            glDeleteTextures(1, &texture2D_edgeProximity[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_mls[cameraID]);
+            glDeleteTextures(1, &texture2D_mlsVertices[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_normals[cameraID]);
+            glDeleteTextures(1, &texture2D_normals[cameraID]);
+
+            glDeleteFramebuffers(1, &fbo_qualityEstimate[cameraID]);
+            glDeleteTextures(1, &texture2D_qualityEstimate[cameraID]);
+        }
+
+        delete[] indices;
+
+        delete[] gridData;
+
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO_pc);
+        glDeleteBuffers(1, &VBO_indices);
+
+        glDeleteVertexArrays(1, &VAO_quad);
+        glDeleteBuffers(1, &VBO_quad);
+    }
 
 
     /**
@@ -774,18 +835,17 @@ public:
                 glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
                 qualityEstimateShader.bind();
 
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
-                    qualityEstimateShader.setUniform("vertices", 0);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                qualityEstimateShader.setUniform("vertices", 0);
 
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
-                    qualityEstimateShader.setUniform("normals", 1);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
+                qualityEstimateShader.setUniform("normals", 1);
 
-                    glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-                    qualityEstimateShader.setUniform("edgeDistances", 2);
-
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                qualityEstimateShader.setUniform("edgeDistances", 2);
 
                 glBindVertexArray(VAO_quad);
                 glDrawArrays(GL_TRIANGLES, 0, 6);
