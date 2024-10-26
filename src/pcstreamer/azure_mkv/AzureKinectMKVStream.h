@@ -358,6 +358,7 @@ public:
 
             std::memcpy(pc->colors, bgradata, width * height * sizeof(int));
 
+            k4a_image_release(pcimg);
             k4a_image_release(depth_image);
             k4a_image_release(transformed_color_image);
             k4a_image_release(color_image);
