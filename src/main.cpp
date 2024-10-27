@@ -755,16 +755,16 @@ int main(int argc, char** argv)
         glfwSwapBuffers(window);
     }
 
-    shouldClose = true;
-    pointCloudsAvailableSemaphore.release();
-    filterAndIntegrateThread.join();
-    pointCloudsProcessedSemaphore.release();
-
     // Cleanup (so that the callback don't access deleted memory):
     pcStreamer = nullptr;
 
     // Cleanup (so that the callback don't access deleted memory):
     pcRenderer = nullptr;
+
+    shouldClose = true;
+    pointCloudsAvailableSemaphore.release();
+    filterAndIntegrateThread.join();
+    pointCloudsProcessedSemaphore.release();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
