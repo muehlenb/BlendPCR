@@ -102,9 +102,7 @@ In our research paper, we conducted visual comparisons among the SplatRenderer, 
 
 For scenarios where CUDA is not used, we have implemented *SpatialHoleFiller* and *ErosionFilter* as an initial GLSL pass in the `BlendPCR`, which is automatically activated when CUDA is disabled during the build process. This way, we are able to achieve the same visual quality even without CUDA. It is important to note that without CUDA, both the SplatRenderer and Simple Mesh Renderer may exhibit lower visual quality than that demonstrated in our paper, even if the BlendPCR renderer is as presented in the paper.
 
-## Related Work
-
 ## Cite
 ```
-test
+Will follow on publication.
 ```
