@@ -13,7 +13,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
-- [Download Windows (64-Bit)](), without CUDA for all graphic cards.
+- [Download Windows (64-Bit)](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_current.html), without CUDA for all graphic cards.
 
 
 ## Build Requirements
