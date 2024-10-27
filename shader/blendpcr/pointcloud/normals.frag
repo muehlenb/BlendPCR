@@ -33,26 +33,26 @@ float getMatrixElem(in mat3 a, in int n){
 }
 
 // Set mat3 element by single index (row-wise):
-void setMatrixElem(in out mat3 a, in int n, in float val){
+void setMatrixElem(inout mat3 a, in int n, in float val){
     a[n/EIG_DIM][n%EIG_DIM] = val;
 }
 
 
-void swap(in out int a, in out int b){
+void swap(inout int a, inout int b){
     int h = a;
     a = b;
     b = h;
 }
 
 // Swaps values of a mat3:
-void swap(in out mat3 a, in int i, in int h){
+void swap(inout mat3 a, in int i, in int h){
     float i_val = a[i/EIG_DIM][i%EIG_DIM];
     a[i/EIG_DIM][i%EIG_DIM] = a[h/EIG_DIM][h%EIG_DIM];
     a[h/EIG_DIM][h%EIG_DIM] = i_val;
 }
 
 // DSWAP for mat3:
-void dswap_ported(in out mat3 a, in int x_idx, in int y_idx, in int n )
+void dswap_ported(inout mat3 a, in int x_idx, in int y_idx, in int n )
 {
     for ( int i = 0; i < n ; i++ ){
         float x_val = getMatrixElem(a, x_idx + i);
@@ -68,13 +68,13 @@ void dswap_ported(in out mat3 a, in int x_idx, in int y_idx, in int n )
 * and modified to work with mat3:
 */
 
-void daxpy_ported(in int n, in float a, in float x[EIG_DIM_SQR], in int x_idx, in out mat3 y, in int y_idx )
+void daxpy_ported(in int n, in float a, in float x[EIG_DIM_SQR], in int x_idx, inout mat3 y, in int y_idx )
 {
     for ( int i = 0; i < n ; i ++ )
         setMatrixElem(y, y_idx + i, getMatrixElem(y, y_idx + i) + a * x[x_idx + i]);
 }
 
-void cholesky_ported(in out mat3 a, out int jpvt[EIG_DIM], out int rank )
+void cholesky_ported(inout mat3 a, out int jpvt[EIG_DIM], out int rank )
 {
     float work[EIG_DIM*EIG_DIM];
 
@@ -145,7 +145,7 @@ void cholesky_ported(in out mat3 a, out int jpvt[EIG_DIM], out int rank )
 } 
 
 
-void calc_eigenvalues_unopt(in mat3 m, in out vec3 lambda )
+void calc_eigenvalues_unopt(in mat3 m, inout vec3 lambda )
 {
     float h1 = m[1][1]*m[2][2];
     float h2 = m[1][2]*m[1][2];
@@ -170,7 +170,7 @@ void calc_eigenvalues_unopt(in mat3 m, in out vec3 lambda )
 
 
 // optimized, effect is about 1.3x
-void calc_eigenvalues_opt(in mat3 m, in out vec3 lambda)
+void calc_eigenvalues_opt(in mat3 m, inout vec3 lambda)
 {
     float h1 = m[1][1]*m[2][2];
     float h2 = m[1][2]*m[1][2];

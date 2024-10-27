@@ -213,7 +213,7 @@ int main(int argc, char** argv)
     std::function<void(std::vector<std::shared_ptr<OrganizedPointCloud>>)> streamerCallback =
         [&lastStreamedPointClouds, &pointCloudsAvailableSemaphore, &pointCloudsProcessedSemaphore](std::vector<std::shared_ptr<OrganizedPointCloud>> pointClouds)
     {
-        pointCloudsProcessedSemaphore.acquire();
+        pointCloudsProcessedSemaphore.acquireAll();
         lastStreamedPointClouds = pointClouds;
         pointCloudsAvailableSemaphore.release();
     };
@@ -335,7 +335,7 @@ int main(int argc, char** argv)
                 ImGui::Text("CWIPC-SXR (Buffered) Load Settings:");
                 ImGui::SliderInt("Start Frame", &Streamer::BufferedStartFrameOffset, 0, 1000);
                 ImGui::SliderInt("Max Frames", &Streamer::BufferedMaxFrameCount, 0, 1000);
-                ImGui::Text(("Approx. required RAM: " + std::to_string(int(std::ceil(0.07 * Streamer::BufferedMaxFrameCount))) + " GB").c_str());
+                ImGui::Text(("Approx. required RAM: " + std::to_string(int(std::ceil(0.058 * Streamer::BufferedMaxFrameCount))) + " GB").c_str());
                 ImGui::Separator();
                 ImGui::Text("");
                 ImGui::Separator();
@@ -364,14 +364,16 @@ int main(int argc, char** argv)
 
                     ImGui::Separator();
 
-                    ImGui::Checkbox("Realtime (Skip Frames)", &pcFileStreamer->allowFrameSkipping);
+                    if(pcStreamerLoadedIdx == 1)
+                        ImGui::Checkbox("Realtime (Skip Frames)", &pcFileStreamer->allowFrameSkipping);
                     ImGui::Checkbox("Loop", &pcFileStreamer->loop);
                     ImGui::Separator();
                 }
 
                 std::shared_ptr<AzureKinectMKVStreamer> pcAzureKinectMKVStreamer = std::dynamic_pointer_cast<AzureKinectMKVStreamer>(pcStreamer);
                 if(pcAzureKinectMKVStreamer != nullptr){
-                    ImGui::Checkbox("High Resolution Encoding", &pcAzureKinectMKVStreamer->useColorIndices);
+                    if(pcStreamerLoadedIdx == 1)
+                        ImGui::Checkbox("High Resolution Encoding", &pcAzureKinectMKVStreamer->useColorIndices);
 
                 } else {
                     ImGui::TextWrapped("Please select \"Source\" to load a scene.");
@@ -721,7 +723,11 @@ int main(int argc, char** argv)
         // End measuring time:
         // glEndQuery(GL_TIME_ELAPSED);
 
-        for(std::shared_ptr<OrganizedPointCloud> pc : lastProcessedPointClouds){
+        // Copy to avoid memory issues in the following for loop (when new processed point cloud is set
+        // by another thread):
+        std::vector<std::shared_ptr<OrganizedPointCloud>> tmpPCs = lastProcessedPointClouds;
+
+        for(std::shared_ptr<OrganizedPointCloud> pc : tmpPCs){
              // Camera:
              singleColorShader.bind();
              singleColorShader.setUniform("projection", projection);
@@ -754,6 +760,7 @@ int main(int argc, char** argv)
         // Swap Buffers (waits for vsync (?)):
         glfwSwapBuffers(window);
     }
+
 
     // Cleanup (so that the callback don't access deleted memory):
     pcStreamer = nullptr;

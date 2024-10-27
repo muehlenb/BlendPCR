@@ -110,7 +110,7 @@ public:
 
                 auto now = high_resolution_clock::now();
                 if(allowFrameSkipping){
-                    currentTime += float(duration_cast<microseconds>(now - lastFrameTime).count() * 0.000001);
+                    currentTime += float(duration_cast<nanoseconds>(now - lastFrameTime).count() * 0.000000001);
                 } else {
                     currentTime += float(streams[0]->getTimeDeltaToNextFrame()) + 0.000001f;
                 }
@@ -145,6 +145,9 @@ public:
 
                 if(callback && !noUpdate)
                     callback(pointClouds);
+
+                // Just relax a little bit (especially for buffer reader):
+                std::this_thread::sleep_for(1ms);
             }
         });
     }
