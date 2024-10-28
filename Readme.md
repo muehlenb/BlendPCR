@@ -98,9 +98,7 @@ Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemen
 
 **Note on visual quality**: Without CUDA, the SplatRenderer and Simple Mesh Renderer may display lower visual quality than shown in our paper, though the BlendPCR renderer will maintain the same quality.
 
-## Related Work
-
 ## Cite
 ```
-Will follow.
+Will follow on publication.
 ```
