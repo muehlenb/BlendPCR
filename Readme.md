@@ -15,12 +15,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
 - [Download Windows (64-Bit)](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_current.html), without CUDA for all graphic cards.
 
-
 ## Build Requirements
-
-Note that we also provide pre-built binaries for Windows, and you do not need to build from source code just to test: 
-
-
 
 ### Required:
  - **CMake** ≥ 3.11
@@ -76,7 +71,7 @@ It is recommended to download only the `dataset_hierarchy.tgz`, which provides m
 When loading the CWIPC-SXR dataset, you have two options:
 
 - **CWIPC-SXR (Streamed):** This mode streams the RGB-D camera recordings directly from the hard drive. Operations such as reading from the hard drive, color conversion (MJPEG to BGRA32), and point cloud generation are performed on the fly. Real-time streaming is usually not feasible when using seven cameras.
-- **CWIPC-SXR (Buffered):** This mode initially reads the complete RGB-D recordings, performs color conversion, and generates point clouds. While this process can be time-consuming and requires significant RAM, it enables subsequent real-time streaming of the recordings. *(**Note:** Don't use this buffered version with CUDA filters, since the CUDA filters alter the buffer during playback)*
+- **CWIPC-SXR (Buffered):** This mode initially reads the complete RGB-D recordings, performs color conversion, and generates point clouds. While this process can be time-consuming and requires significant RAM, it enables subsequent real-time streaming of the recordings. *(**Note:** (1) Due to memory requirements, no high resolution color textures are loaded and (2) don't use this buffered version with CUDA filters, since the CUDA filters alter the buffer during playback)*
 
 After choosing your preferred mode, a file dialog will appear, prompting you to select the `cameraconfig.json` file for the scene you wish to load. Playback will commence a few seconds or minutes after the selection, depending on the chosen Source Mode.
 
@@ -90,21 +85,22 @@ You can switch between following rendering techniques:
 
 - **Splats (Uniform):** Using uniform splats with a fixed (configurable) size.
 - **Naive Mesh:** Separate Meshes reconstructed for each camera, which are not blended.
-- **BlendPCR:** The BlendPCR implementation, which we described in our paper. Note that you can activate the 'Reimpl. Filters' option, which enables a GLSL reimplementation of the CUDA filters we used in the evaluation of our paper.
+- **BlendPCR:** The BlendPCR implementation, which we described in our paper. Note that you can activate the 'Reimpl. Filters' option, which enables a GLSL reimplementation of the CUDA filters we used in the evaluation of our paper. 
 
 *Note: For High Resolution Color Textures - named **BlendPCR (HR)** in the paper -, enable **High Resolution Encoding** both in the Source Mode **and** in the BlendPCR renderer.*
 
-
-
 ## Remarks
 ### Point Cloud Filters via CUDA
-In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer utilized the same set of CUDA-implemented filters: *ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*, located in the `src/pcfilter/` folder. These filters are enabled by default when the project is compiled with CUDA support (I.e. if `USE_CUDA` is set to `ON` in the CMAKE configuration).
 
-For scenarios where CUDA is not used, we have implemented *SpatialHoleFiller* and *ErosionFilter* as an initial GLSL pass in the `BlendPCR`, which is automatically activated when CUDA is disabled during the build process. This way, we are able to achieve the same visual quality even without CUDA. It is important to note that without CUDA, both the SplatRenderer and Simple Mesh Renderer may exhibit lower visual quality than that demonstrated in our paper, even if the BlendPCR renderer is as presented in the paper.
+In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer used the same set of CUDA filters (*ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*), located in the `src/pcfilter/` folder. To use these CUDA filters instead of the reimplemented GLSL filters, enable them in the "Filter" section and disable "Reimpl. Filters" in the BlendPCR section. Note that CUDA filters can only be used if `USE_CUDA` was set to `ON` in the CMAKE configuration during compilation.
+
+Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemented as an initial GLSL pass in the `BlendPCR` renderer, which is enabled by default. This allows us to achieve similar visual quality even without CUDA.
+
+**Note on visual quality**: Without CUDA, the SplatRenderer and Simple Mesh Renderer may display lower visual quality than shown in our paper, though the BlendPCR renderer will maintain the same quality.
 
 ## Related Work
 
 ## Cite
 ```
-test
+Will follow.
 ```
