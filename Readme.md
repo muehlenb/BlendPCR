@@ -103,12 +103,12 @@ Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemen
 ### Visual comparison in CWIPC-SXR, S3 Flight Attentant Scene
 ![image](https://cgvr.cs.uni-bremen.de/papers/icategve24/images/compare_flight_att.jpg)
 
-1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and have a slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.
+<small>1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and have a slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.</small>
 
 ### Visual comparison in CWIPC-SXR, S7 Scarf Dressing Scene
 ![image](https://cgvr.cs.uni-bremen.de/papers/icategve24/images/compare_scarf.jpg)
 
-1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and have a slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.
+<small>1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and have a slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.</small>
 
 ### Performance
 The performance in default configuration for different numbers of cameras, divided by point cloud passes and screen passes on an NVIDIA GeForce RTX 4090.
