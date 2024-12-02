@@ -1,15 +1,14 @@
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### Video (available soon) | Paper (available soon)
+#### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://cgvr.cs.uni-bremen.de/papers/icategve24/videos/blendpcr.mp4)  | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) 
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
 
-*Conditionally Accepted at ICAT-EGVE 2024*
- 
-![image](images/teaser.jpg)
+Presented at ICAT-EGVE 2024
 
+![image](images/teaser.jpg)
 
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
@@ -111,13 +110,23 @@ Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemen
 <sub>1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and use slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.</sub>
 
 ### Performance
-The performance in default configuration for different numbers of cameras, divided by point cloud passes and screen passes on an NVIDIA GeForce RTX 4090.
+The performance in default configuration for different numbers of cameras, divided by point cloud passes and screen passes on an NVIDIA GeForce RTX 4090 using a resolution of 3580 x 2066.
 
 ![image](https://cgvr.cs.uni-bremen.de/papers/icategve24/images/performance_cameras.jpg)
 
-For further details, see our paper (available soon).
+For further details, see [our paper](https://diglib.eg.org/handle/10.2312/egve20241366) .
 
 ## Cite
 ```
-Will follow on publication.
+@inproceedings{10.2312:egve.20241366,
+  booktitle = {ICAT-EGVE 2024 - International Conference on Artificial Reality and Telexistence and Eurographics Symposium on Virtual Environments},
+  editor = {Hasegawa, Shoichi and Sakata, Nobuchika and Sundstedt, Veronica},
+  title = {{BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras}},
+  author = {Mühlenbrock, Andre and Weller, Rene and Zachmann, Gabriel},
+  year = {2024},
+  publisher = {The Eurographics Association},
+  ISSN = {1727-530X},
+  ISBN = {978-3-03868-245-5},
+  DOI = {10.2312/egve.20241366}
+}
 ```
