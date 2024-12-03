@@ -6,7 +6,7 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
 
-Presented at ICAT-EGVE 2024
+Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 
 ![image](images/teaser.jpg)
 
@@ -119,14 +119,14 @@ For further details, see [our paper](https://diglib.eg.org/handle/10.2312/egve20
 ## Cite
 ```
 @inproceedings{10.2312:egve.20241366,
-  booktitle = {ICAT-EGVE 2024 - International Conference on Artificial Reality and Telexistence and Eurographics Symposium on Virtual Environments},
-  editor = {Hasegawa, Shoichi and Sakata, Nobuchika and Sundstedt, Veronica},
-  title = {{BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras}},
-  author = {Mühlenbrock, Andre and Weller, Rene and Zachmann, Gabriel},
-  year = {2024},
-  publisher = {The Eurographics Association},
-  ISSN = {1727-530X},
-  ISBN = {978-3-03868-245-5},
-  DOI = {10.2312/egve.20241366}
+    booktitle = {ICAT-EGVE 2024 - International Conference on Artificial Reality and Telexistence and Eurographics Symposium on Virtual Environments},
+    editor = {Hasegawa, Shoichi and Sakata, Nobuchika and Sundstedt, Veronica},
+    title = {{BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras}},
+    author = {Mühlenbrock, Andre and Weller, Rene and Zachmann, Gabriel},
+    year = {2024},
+    publisher = {The Eurographics Association},
+    ISSN = {1727-530X},
+    ISBN = {978-3-03868-245-5},
+    DOI = {10.2312/egve.20241366}
 }
 ```
