@@ -10,6 +10,9 @@
 
 using namespace std::chrono;
 
+// Uncomment if you want to print timings:
+// #define PRINT_TIMINGS
+
 #define CAMERA_COUNT 7
 #define CAMERA_IMAGE_WIDTH 640
 #define CAMERA_IMAGE_HEIGHT 576
@@ -135,7 +138,7 @@ class BlendPCR : public Renderer {
     std::map<std::string, GLuint> timeQueries;
 
     void startTimeMeasure(std::string str, bool gpu = false){
-        /*
+#ifdef PRINT_TIMINGS
         auto time = high_resolution_clock::now();
         startTimeMeasureMap[str] = time;
 
@@ -144,11 +147,12 @@ class BlendPCR : public Renderer {
             glGenQueries(1, &query);
             timeQueries[str] = query;
             glBeginQuery(GL_TIME_ELAPSED, timeQueries[str]);
-        }*/
+        }
+#endif
     }
 
     void endTimeMeasure(std::string str, bool gpu = false){
-        /*
+#ifdef PRINT_TIMINGS
         auto time = high_resolution_clock::now();
 
         if(gpu){
@@ -165,7 +169,8 @@ class BlendPCR : public Renderer {
         } else {
             float duration = duration_cast<microseconds>(time - startTimeMeasureMap[str]).count() / 1000.f;
             timeMeasureMap[str] = duration;
-        }*/
+        }
+#endif
     }
 
     void initQuadBuffer(){
@@ -727,7 +732,7 @@ public:
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
             }
-            endTimeMeasure("2b) Hole Filling Pass", true);
+            endTimeMeasure("2b) Erosion Pass", true);
         }
 
         startTimeMeasure("3a) RejectedPass", true);
@@ -1075,5 +1080,12 @@ public:
         glEnable(GL_CULL_FACE);
 
         glEnable(GL_BLEND);
+
+#ifdef PRINT_TIMINGS
+        for(auto pair : timeMeasureMap){
+            std::cout << pair.first << ": " << pair.second << std::endl;
+        }
+        std::cout << std::endl;
+#endif
     }
 };
