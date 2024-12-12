@@ -1,3 +1,5 @@
+**Note:** This is the `async_optimized` branch: Optimized by asynchronious uploading point clouds to GPU and only processing them when changed. This increases the overall framerate to approx. 80-120 fps for rendering the point cloud of seven Microsoft Azure Kinects on a screen with a resolution of 3580x2066. However, currently, the high resolution version **BlendPCR (HR)** is **not** implemented in this branch. 
+
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
 #### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://cgvr.cs.uni-bremen.de/papers/icategve24/videos/blendpcr.mp4) | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) | [Supplementary](https://cgvr.cs.uni-bremen.de/papers/icategve24/paper/blendpcr_supplementary.pdf) 
 
@@ -12,7 +14,10 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
-- [Download Windows (64-Bit)](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_current.html), without CUDA for all graphic cards.
+- [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), without CUDA for all graphic cards (approx. 60-80 fps²). 
+- [Download Windows (64-Bit), async_optimized branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_async_optimized.html), without CUDA for all graphic cards (approx. 80-120 fps²). Optimized by asynchronious uploading point clouds to GPU and only processing them when changed. Currently, the high resolution version **BlendPCR (HR)** is **not** implemented in this branch. 
+
+²: Using 7 Microsoft Azure Kinects at 3580x2066 screen resolution on NVIDIA GeForce 4090 RTX (OpenGL 3.3 only implementation). 
 
 ## Build Requirements
 
@@ -95,7 +100,7 @@ In our research paper, we conducted visual comparisons among the SplatRenderer, 
 
 Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemented as an initial GLSL pass in the `BlendPCR` renderer, which is enabled by default. This allows us to achieve similar visual quality even without CUDA.
 
-**Note on visual quality**: Without CUDA, the SplatRenderer and Simple Mesh Renderer may display lower visual quality than shown in our paper, though the BlendPCR renderer will maintain the same quality.
+**Note on visual quality**: Without CUDA, the SplatRenderer and Simple Mesh Renderer may display lower visual quality than shown in our paper, though the BlendPCR renderer will maintain almost the same quality. Nevertheless, there are further possibilities for improving quality, for example by improving the reimplemented erosion and hole filling filters (try to activate and deactive the reimpl. filters).
 
 
 ## Results
