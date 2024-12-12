@@ -13,7 +13,7 @@
 using namespace std::chrono;
 
 // Uncomment if you want to print timings:
-#define PRINT_TIMINGS
+// #define PRINT_TIMINGS
 
 #define CAMERA_COUNT 7
 #define CAMERA_IMAGE_WIDTH 640
