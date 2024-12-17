@@ -1,7 +1,7 @@
 **Note:** This is the `async_optimized` branch: Optimized by asynchronious uploading point clouds to GPU and only processing them when changed. This increases the overall framerate to approx. 80-120 fps for rendering the point cloud of seven Microsoft Azure Kinects on a screen with a resolution of 3580x2066. However, currently, the high resolution version **BlendPCR (HR)** is **not** implemented in this branch. 
 
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://cgvr.cs.uni-bremen.de/papers/icategve24/videos/blendpcr.mp4) | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) | [Supplementary](https://cgvr.cs.uni-bremen.de/papers/icategve24/paper/blendpcr_supplementary.pdf) 
+#### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://www.youtube.com/watch?v=KBcpvIa-oNc) | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) | [Supplementary](https://cgvr.cs.uni-bremen.de/papers/icategve24/paper/blendpcr_supplementary.pdf) 
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
