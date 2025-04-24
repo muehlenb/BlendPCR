@@ -1,5 +1,5 @@
 # BlendPCR: Seamless and Efficient Rendering of Dynamic Point Clouds captured by Multiple RGB-D Cameras
-#### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://cgvr.cs.uni-bremen.de/papers/icategve24/videos/blendpcr.mp4) | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) | [Supplementary](https://cgvr.cs.uni-bremen.de/papers/icategve24/paper/blendpcr_supplementary.pdf) 
+#### [Paper](https://diglib.eg.org/handle/10.2312/egve20241366) | [Video](https://www.youtube.com/watch?v=KBcpvIa-oNc) | [Slides](https://cgvr.cs.uni-bremen.de/papers/icategve24/slides/blendpcr_slides.pdf) | [Supplementary](https://cgvr.cs.uni-bremen.de/papers/icategve24/paper/blendpcr_supplementary.pdf) 
 
 C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point clouds derived from multiple RGB-D cameras. It combines efficiency with high-quality rendering while effectively preventing common z-fighting-like seam flickering. The software is equipped to load and stream the CWIPC-SXR dataset for test purposes and comes with a GUI.
 
