@@ -23,6 +23,8 @@ Just start both tools, open a stream in the BlendPCR framework and click play in
 ### Additional Requirements (CMake / Build)
 Note that there are currently no prebuild binaries. For this branch, you additionally need the `Boost` library. On Windows, I suggest to install it via `vcpkg` and simply set the `CMAKE_TOOLCHAIN_FILE` variable to `[your_vcpkg_dir]/scripts/buildsystems/vcpkg.cmake` in the CMake settings.
 
+Finally, ensure that the `USE_BOOST` CMake-Option is set to `ON` (otherwise, the streaming functionality will not be built).
+
 ### Current drawbacks (under development)
 - No z-Buffer / Depth Test.
 - No shadow casting. 

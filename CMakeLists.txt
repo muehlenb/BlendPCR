@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 option(USE_CUDA "Enable CUDA" OFF)
-option(USE_BOOST "Enable BOOST" OFF)
+option(USE_BOOST "Enable BOOST" ON)
 
 if(USE_CUDA)
     project(BlendPCR CUDA CXX)
