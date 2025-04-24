@@ -11,13 +11,22 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 ![image](images/teaser.jpg)
 
 ## Unreal Engine 5 Streamer Branch
+### General Info
 This is the branch of the **Unreal Engine 5 Streamer**, which is currently in development for VR comparison. It can stream all live renderings of all implemented rendering techniques in the BlendPCR framework directly into Unreal Engine 5 and adapts to the projection used in the Unreal Engine.
 
 ![image](images/ue5_streamer.gif)
 
-**Current drawbacks (under development):**
+You find the corresponding Unreal Engine 5 Project at: https://cgvr.cs.uni-bremen.de/papers/icategve24/ue5_streamer/BlendPCR_UE5_Stream_Project.zip
+
+Just start both tools, open a stream in the BlendPCR framework and click play in the Unreal Engine project, then it will run (both will automatically connect via network).
+
+### Additional Requirements (CMake / Build)
+Note that there are currently no prebuild binaries. For this branch, you additionally need the `Boost` library. On Windows, I suggest to install it via `vcpkg` and simply set the `CMAKE_TOOLCHAIN_FILE` variable to `[your_vcpkg_dir]/scripts/buildsystems/vcpkg.cmake` in the CMake settings.
+
+### Current drawbacks (under development)
 - No z-Buffer / Depth Test.
 - No shadow casting. 
+
 
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
