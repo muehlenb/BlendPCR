@@ -606,6 +606,9 @@ public:
             return;
         }
 
+        int originalFramebuffer;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &originalFramebuffer);
+
         // Cache main viewport and initialize viewport for depth camera image passes:
         int mainViewport[4];
         glGetIntegerv(GL_VIEWPORT, mainViewport);
@@ -866,7 +869,7 @@ public:
         startTimeMeasure("4a) RenderMesh", true);
         // Restore viewport for screen rendering:
         glViewport(0, 0, mainViewport[2], mainViewport[3]);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, originalFramebuffer);
 
         // Just for switching for paper images:
         // bool merge = GlobalStateHandler::instance().rightBarViewModel()->debug_showRays();
@@ -1003,7 +1006,7 @@ public:
         // Screen Merging:
         {
             glViewport(mainViewport[0], mainViewport[1], mainViewport[2], mainViewport[3]);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, originalFramebuffer);
 
             unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
             glDrawBuffers(1, attachments);

@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 option(USE_CUDA "Enable CUDA" OFF)
+option(USE_BOOST "Enable BOOST" OFF)
 
 if(USE_CUDA)
     project(BlendPCR CUDA CXX)
@@ -44,7 +45,6 @@ if(WIN32)
         set(K4A_RECORD_LIB "C:\\Program Files\\Azure Kinect SDK v1.4.1\\sdk\\windows-desktop\\amd64\\release\\lib\\k4arecord.lib" CACHE FILEPATH "Path to k4arecord.lib" FORCE)
     endif()
 endif()
-
 
 # OpenMP (normally installed):
 find_package(OpenMP)
@@ -142,6 +142,16 @@ if(USE_CUDA)
     )
 endif()
 
+
+if(USE_BOOST)
+    # Boost asio to send image data (Unreal Engine Streamer):
+    find_package(Boost REQUIRED COMPONENTS system thread)
+
+    set(BOOST_HEADERS
+        src/util/network/NetworkImageSender.h
+    )
+endif()
+
 # Define shader & resources which should be listed in IDE:
 set(RESOURCES
     shader/singleColorShader.vert
@@ -199,6 +209,11 @@ if(USE_CUDA)
     list(APPEND SOURCES ${CUDA_SOURCES})
 endif()
 
+if(USE_BOOST)
+    list(APPEND HEADERS ${BOOST_HEADERS})
+    list(APPEND SOURCES ${BOOST_SOURCES})
+endif()
+
 list(APPEND SOURCES src/main.cpp)
 
 # Define executables with source files and resources:
@@ -208,7 +223,6 @@ add_executable(BlendPCR ${SOURCES} ${HEADERS} ${RESOURCES})
 target_compile_definitions(BlendPCR PUBLIC -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 # Define the libraries to link against:
-
 target_link_libraries(BlendPCR PUBLIC imgui glad)
 
 if(USE_CUDA)
@@ -226,3 +240,10 @@ target_link_libraries(BlendPCR PRIVATE ${K4A_RECORD_LIB})
 
 # OpenMP
 target_link_libraries(BlendPCR PUBLIC OpenMP::OpenMP_CXX)
+
+if(USE_BOOST)
+    target_compile_definitions(BlendPCR PRIVATE USE_BOOST)
+    target_link_libraries(BlendPCR PRIVATE Boost::boost Boost::system Boost::thread Boost::headers)
+    #target_link_libraries(BlendPCR PRIVATE ${Boost_LIBRARIES})
+    #target_include_directories(BlendPCR PRIVATE ${Boost_INCLUDE_DIRS})
+endif()

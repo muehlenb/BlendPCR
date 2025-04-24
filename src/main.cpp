@@ -55,6 +55,14 @@
 #include "src/pcfilter/ClippingFilter.h"
 #endif
 
+// Network Image Sender to Stream Rendering to Unreal Engine 5:
+#ifdef USE_BOOST
+#define NETWORK_IMAGE_WIDTH 1920
+#define NETWORK_IMAGE_HEIGHT 1080
+#include "src/util/network/NetworkImageSender.h"
+#endif
+
+
 #include <imfilebrowser.h>
 
 #include <chrono>
@@ -193,17 +201,6 @@ int main(int argc, char** argv)
     /**
      * Filter pipeline used in paper (don't use it with the buffered streamer!).
      */
-
-    /*
-    #ifdef USE_CUDA
-        std::shared_ptr<ClippingFilter> clippingFilter = std::make_shared<ClippingFilter>();
-        pcFilters.push_back(clippingFilter);
-        std::shared_ptr<SpatialHoleFiller> holeFiller = std::make_shared<SpatialHoleFiller>();
-        pcFilters.push_back(holeFiller);
-        std::shared_ptr<ErosionFilter> erosionFilter = std::make_shared<ErosionFilter>();
-        pcFilters.push_back(erosionFilter);
-    #endif*/
-
     Semaphore pointCloudsAvailableSemaphore;
     Semaphore pointCloudsProcessedSemaphore(1);
     std::vector<std::shared_ptr<OrganizedPointCloud>> lastStreamedPointClouds;
@@ -280,6 +277,17 @@ int main(int argc, char** argv)
     fileDialog.SetTitle("Select 'cameraconfig.json' of CWIPC-SXR dataset:");
     fileDialog.SetTypeFilters({ ".json" });
     fileDialog.SetWindowSize(1060,620);
+
+
+#ifdef USE_BOOST
+    NetworkImageSender imageSender(NETWORK_IMAGE_WIDTH * NETWORK_IMAGE_HEIGHT);
+
+    // Create our FBO for the first pass including two textures:
+    TextureFBO renderingFBO(std::vector<TextureType>({
+        TextureType(GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE),                            // Color texture
+        TextureType(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE),    // Depth texture type
+    }));
+#endif
 
     // Main loop which is executed every frame until the window is closed:
     while (!glfwWindowShouldClose(window))
@@ -716,8 +724,42 @@ int main(int argc, char** argv)
 
         // Render all the objects in the scene:
         {
-            if(pcRenderer != nullptr)
+            if(pcRenderer != nullptr){
+#ifdef USE_BOOST
+                int frameBufferWidth = display_w;
+                int frameBufferHeight = display_h;
+                bool useNetwork = int(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - imageSender.lastMsgReceived).count()) < 1;
+
+                if(useNetwork){
+                    projection = imageSender.projection;
+                    view = imageSender.view;
+                    frameBufferWidth = NETWORK_IMAGE_WIDTH;
+                    frameBufferHeight = NETWORK_IMAGE_HEIGHT;
+                }
+
+                renderingFBO.bind(frameBufferWidth, frameBufferHeight);
+                glViewport(0, 0, frameBufferWidth, frameBufferHeight);
+                glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                if(pcRenderer != nullptr)
+                    pcRenderer->render(projection, view);
+
+                if(useNetwork)
+                    glReadPixels(0, 0, frameBufferWidth, frameBufferHeight, GL_BGRA, GL_UNSIGNED_BYTE, imageSender.imageBuffer);
+
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                glViewport(menuWidth, 0, display_w, display_h);
+
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, renderingFBO.getName());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                glBlitFramebuffer(0, 0, frameBufferWidth, frameBufferHeight, menuWidth, 0, display_w + menuWidth, display_h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                imageSender.sendImage(1920, 1080);
+#else
                 pcRenderer->render(projection, view);
+#endif
+            }
         }
 
         // End measuring time:
