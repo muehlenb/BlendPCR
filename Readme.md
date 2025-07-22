@@ -12,6 +12,7 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 
 ## Updates
 - **CUDA filter replaced by full OpenGL 3.3 implementation**
+- **WiP of Unreal Engine 5 VR integration (see `unreal_engine_5_streamer` branch)**
 - **Performance Optimization**
   - Bottleneck of uploading point clouds to GPU were solved by uploading `uint16_t*` depth image and generate the point cloud on the GPU
 - **Current Benchmark**, rendering at **3580 x 2066**, fusing **7** Microsoft Azure Kinects @ 30 Hz simultaneously on NVIDIA GeForce 4090 RTX.
@@ -21,15 +22,6 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
 - [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), OpenGL 3.3 Only Version
-
-²: . 
-
-
-## VR Integration
-### UE5 Integration for VR
-We are currently working in parallel on a more extensive Unreal Engine 5 integration, which will likely be continued as part of upcoming theses. The current proof-of-concept (network based) can be viewed in the `unreal_engine_5_streamer` branch:
-
-![image](images/ue5_streamer.gif)
 
 ### Further Performance Optimization (Todo)
 In our internal framework, I replaced the `Vec4f* positions` array in `OrganizedPointCloud.h` with a `uint16_t` array. The point cloud is there generated on the GPU (in the shader), minimizing the upload performance bottleneck. This yields even higher frame rates than the 60–80 fps and 80–120 fps mentioned below. I plan to integrate these improvements into this public framework in due course (i.e., possibly during 2025) and then merge the branches (Async and UE5-Streamer).
