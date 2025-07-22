@@ -22,9 +22,9 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
 - [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), OpenGL 3.3 Only Version
   
-**Current Benchmark**, rendering at **3580 x 2066**, fusing **7** Microsoft Azure Kinects @ 30 Hz simultaneously on NVIDIA GeForce 4090 RTX:
+**Current Benchmark**, rendering at **3580 x 2066** while fusing **7** Microsoft Azure Kinects @ 30 Hz simultaneously on NVIDIA GeForce 4090 RTX:
 - Single Person: approx. **230 fps**
-- Whole Scene: approx. **130 fps**.
+- Whole Scene: approx. **130 fps**
 
 ## Build Requirements
 
