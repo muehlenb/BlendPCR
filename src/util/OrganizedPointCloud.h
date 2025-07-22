@@ -5,14 +5,10 @@
 
 #include <map>
 
-#ifdef USE_CUDA
-#include <cuda_runtime.h>
-#else
 struct float2 {float x, y;};
 struct float3 {float x, y, z;};
 struct float4 {float x, y, z, w;};
 struct uchar4 {unsigned char x, y, z, w;};
-#endif
 
 #include "src/util/math/Mat4.h"
 #include "src/util/gl/primitive/TexCoord.h"
@@ -29,59 +25,13 @@ struct uchar4 {unsigned char x, y, z, w;};
  * Note that this organized point cloud
  */
 struct OrganizedPointCloud {
-private:
-    /**
-     * Stores all (statically) lookup3DToImage-pointers that were uploaded to gpu for use with CUDA.
-     * Since they are static for each camera (pointer of lookup3DToImage doesn't change), it is not
-     * wanted to upload them every frame for performance reasons.
-     *
-     * Note: Here, we have a memory leak (the GPU memory of these pointers are not deleted) - this
-     * deletion could be implemented in the PCStreamer classes.
-     */
-    static std::map<float*, float2*> uploadedLookup3DToImageTables;
-    static std::map<float*, float2*> uploadedLookupImageTo3DTables;
-
-    /** Defines a piece of GPU memory */
-    struct GPUMemory {
-        size_t size;
-        void* pointer;
-
-        GPUMemory(size_t size, void* pointer)
-            : size(size)
-            , pointer(pointer)
-        {}
-    };
-
-    /**
-     * For performance reasons, we want to reuse gpu / shared memory instead recreating it all the
-     * time. This is less a problem because the most time, we need a memory block of the same size
-     * again (e.g. in the next frame for the next created organized point cloud.
-     */
-    void initializeMemory(void** pointer, size_t size){
-        #ifdef USE_CUDA
-        for(unsigned int i = 0; i < unusedInitializedGPUMemory.size(); ++i){
-            if(unusedInitializedGPUMemory[i].size == size){
-                *pointer = unusedInitializedGPUMemory[i].pointer;
-                unusedInitializedGPUMemory.erase(unusedInitializedGPUMemory.begin() + i);
-                return;
-            }
-        }
-
-        //std::cout << "Allocate new space" << std::endl;
-        cudaMalloc(pointer, size);
-        #endif
-    }
-
-    /** Defines initialized GPU memory which is currently not in use */
-    static std::vector<GPUMemory> unusedInitializedGPUMemory;
-
 public:
     OrganizedPointCloud(unsigned int width, unsigned int height)
         : width(width)
         , height(height){};
 
     /** Stores the xyzw coordiantes of all points */
-    Vec4f* positions = nullptr;
+    uint16_t* depth = nullptr;
 
     /** Stores the rgba coordinates of all points */
     Vec4b* colors = nullptr;
@@ -92,9 +42,7 @@ public:
     /** Texture coordinates */
     TexCoord* texCoords = nullptr;
 
-    /**
-     *
-     */
+    /** */
     int frameID = -1;
 
     /**
@@ -108,22 +56,6 @@ public:
      * since the values doesn't change between different images!)
      */
     float* lookupImageTo3D = nullptr;
-
-    /** Stores the xyzw coordiantes of all points */
-    float4* gpuPositions = nullptr;
-
-    /** Stores the rgba coordinates of all points */
-    uchar4* gpuColors = nullptr;
-
-    /** Stores the normal of all points */
-    float4* gpuNormals = nullptr;
-
-    /** Texture coordinates */
-    float2* gpuTexCoords = nullptr;
-
-    float2* gpuLookup3DToImage = nullptr;
-
-    float2* gpuLookupImageTo3D = nullptr;
 
     /** High resolution colors */
     unsigned int highResWidth = 0;
@@ -156,135 +88,10 @@ public:
      */
     std::map<std::string, std::shared_ptr<OPCAttachment>> attachments;
 
-    /**
-     * Indicates whether the last change was performed on GPU (or CPU) and whether the
-     * the (positions, colors, ...) pointer are up to date or whether the (gpuPositions,
-     * gpuColors, ...) pointer are up to date.
-     */
-    bool gpu = false;
-
-    /**
-     * Initializes the gpu... variables (if nessecary) and copies the content from the
-     * corresponding position, colors, ... arrays.
-     */
-
-    void toGPU(){
-        #ifdef USE_CUDA
-        if(gpu)
-            return;
-
-        if(colors != nullptr){
-            if(gpuColors == nullptr)
-                initializeMemory((void**)&gpuColors, width * height * sizeof(uchar4));
-            cudaMemcpy(gpuColors, colors, width * height * sizeof(uchar4), cudaMemcpyHostToDevice);
-        }
-
-        if(positions != nullptr){
-            if(gpuPositions == nullptr)
-                initializeMemory((void**)&gpuPositions, width * height * sizeof(float4));
-            cudaMemcpy(gpuPositions, positions, width * height * sizeof(float4), cudaMemcpyHostToDevice);
-        }
-
-        if(normals != nullptr){
-            if(gpuNormals == nullptr)
-                initializeMemory((void**)&gpuNormals, width * height * sizeof(float4));
-            cudaMemcpy(gpuNormals, normals, width * height * sizeof(float4), cudaMemcpyHostToDevice);
-        }
-
-        if(texCoords != nullptr){
-            if(gpuTexCoords == nullptr)
-                initializeMemory((void**)&gpuTexCoords, width * height * sizeof(float2));
-            cudaMemcpy(gpuTexCoords, gpuTexCoords, width * height * sizeof(float2), cudaMemcpyHostToDevice);
-        }
-
-        if(lookup3DToImage != nullptr){
-            // If there is a key in the map:
-            if (uploadedLookup3DToImageTables.find(lookup3DToImage) != uploadedLookup3DToImageTables.end()) {
-                gpuLookup3DToImage = uploadedLookup3DToImageTables[lookup3DToImage];
-            } else {
-                cudaMalloc(&gpuLookup3DToImage, lookup3DToImageSize * lookup3DToImageSize * sizeof(float) * 2);
-                cudaMemcpy(gpuLookup3DToImage, lookup3DToImage, lookup3DToImageSize * lookup3DToImageSize * sizeof(float) * 2, cudaMemcpyHostToDevice);
-                uploadedLookup3DToImageTables[lookup3DToImage] = gpuLookup3DToImage;
-            }
-        }
-
-        if(lookupImageTo3D != nullptr){
-            // If there is a key in the map:
-            if (uploadedLookupImageTo3DTables.find(lookupImageTo3D) != uploadedLookupImageTo3DTables.end()) {
-                gpuLookupImageTo3D = uploadedLookupImageTo3DTables[lookupImageTo3D];
-            } else {
-                cudaMalloc(&gpuLookupImageTo3D, width * height * sizeof(float) * 2);
-                cudaMemcpy(gpuLookupImageTo3D, lookupImageTo3D, width * height * sizeof(float) * 2, cudaMemcpyHostToDevice);
-                uploadedLookupImageTo3DTables[lookupImageTo3D] = gpuLookupImageTo3D;
-            }
-        }
-
-        gpu = true;
-        #endif
-    }
-
-    /**
-     * Copies the data back to the cpu (gpuPositions -> positions, gpuColors -> colors, ...).
-     */
-
-    void toCPU(){
-        #ifdef USE_CUDA
-        if(!gpu)
-            return;
-
-        if(colors != nullptr){
-            cudaError_t err = cudaMemcpy(colors, gpuColors, width * height * sizeof(uchar4), cudaMemcpyDeviceToHost);
-            if (err != cudaSuccess) {
-                fprintf(stderr, "GPU->CPU copy error in pc->colors: %s\n", cudaGetErrorString(err));
-            }
-        }
-
-        if(positions != nullptr){
-            cudaError_t err = cudaMemcpy(positions, gpuPositions, width * height * sizeof(float4), cudaMemcpyDeviceToHost);
-            if (err != cudaSuccess) {
-                fprintf(stderr, "GPU->CPU copy error in pc->positions:  %s\n", cudaGetErrorString(err));
-            }
-        }
-
-        if(normals != nullptr)
-            cudaMemcpy(normals, gpuNormals, width * height * sizeof(float4), cudaMemcpyDeviceToHost);
-
-        if(texCoords != nullptr)
-            cudaMemcpy(texCoords, gpuTexCoords, width * height * sizeof(float2), cudaMemcpyDeviceToHost);
-
-        gpu = false;
-        freeGPUMemory();
-        #endif
-    }
-
-    void freeGPUMemory(){
-        if(gpuPositions != nullptr){
-            unusedInitializedGPUMemory.emplace_back(sizeof(Vec4f) * width * height, gpuPositions);
-            gpuPositions = nullptr;
-        }
-
-        if(gpuColors != nullptr){
-            unusedInitializedGPUMemory.emplace_back(sizeof(Vec4b) * width * height, gpuColors);
-            gpuColors = nullptr;
-        }
-
-        if(gpuNormals != nullptr){
-            unusedInitializedGPUMemory.emplace_back(sizeof(Vec4f) * width * height, gpuNormals);
-            gpuNormals = nullptr;
-        }
-
-        if(gpuTexCoords != nullptr){
-            unusedInitializedGPUMemory.emplace_back(sizeof(TexCoord) * width * height, gpuTexCoords);
-            gpuTexCoords = nullptr;
-        }
-    }
-
     ~OrganizedPointCloud(){
-        freeGPUMemory();
-
-        if(positions != nullptr){
-            delete[] positions;
-            positions = nullptr;
+        if(depth != nullptr){
+            delete[] depth;
+            depth = nullptr;
         }
 
         if(colors != nullptr){
@@ -307,6 +114,4 @@ public:
             highResColors = nullptr;
         }
     }
-
-    static void cleanupStaticMemory();
 };

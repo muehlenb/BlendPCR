@@ -7,7 +7,7 @@ in vec2 vScreenPos;
 
 uniform float p_h = 1.f;
 uniform float kernelSpread = 1.f;
-uniform int kernelRadius = 2;
+uniform int kernelRadius = 8;
 
 uniform sampler2D pointCloud;
 uniform sampler2D edgeProximity;
@@ -31,6 +31,10 @@ void main()
     vec2 texelSize = 1.0 / textureSize(pointCloud, 0);
 
     vec3 mid = texture(pointCloud, vScreenPos).xyz;
+	
+	if(mid.z < 0.1)
+		return;
+	
     float edgeDistance = texture(edgeProximity, vScreenPos).r;
 	
     if(edgeDistance > 0.99){
@@ -38,7 +42,7 @@ void main()
         return;
     }
 
-    int usedRadius = clamp(int(edgeDistance * 10), 2, 10);
+    int usedRadius = clamp(int(edgeDistance * 10), 2, kernelRadius);
 
     vec3 sumPoints = vec3(0,0,0);
     float sumWeights = 0;

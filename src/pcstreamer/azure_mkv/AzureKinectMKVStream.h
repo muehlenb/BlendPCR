@@ -318,26 +318,7 @@ public:
                 return nullptr;
             }
 
-            k4a_image_t pcimg;
-            if (k4a_image_create(K4A_IMAGE_FORMAT_CUSTOM, width, height, width * 3 * (int)sizeof(int16_t),&pcimg) != K4A_RESULT_SUCCEEDED){
-                std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
-                k4a_image_release(depth_image);
-                k4a_image_release(transformed_color_image);
-                k4a_image_release(color_image);
-                k4a_capture_release(capture);
-                return nullptr;
-            }
-
-            if (k4a_transformation_depth_image_to_point_cloud(transformation_handle, depth_image, K4A_CALIBRATION_TYPE_DEPTH, pcimg) != K4A_RESULT_SUCCEEDED) {
-                std::cout << "A depth image could not be transformed into a point cloud." << std::endl;
-                k4a_image_release(depth_image);
-                k4a_image_release(transformed_color_image);
-                k4a_image_release(color_image);
-                k4a_capture_release(capture);
-                return nullptr;
-            }
-
-            pc->positions = new Vec4f[width * height];
+            pc->depth = new uint16_t[width * height];
             pc->colors = new Vec4b[width * height];
             pc->modelMatrix = transformation * depthToColorTransform;
             pc->lookupImageTo3D = DFToCS;
@@ -347,18 +328,11 @@ public:
             pc->width = width;
             pc->height = height;
 
-            int16_t* pcdata = (int16_t*)(void*)k4a_image_get_buffer(pcimg);
+            uint16_t* pcdata = (uint16_t*)(void*)k4a_image_get_buffer(depth_image);
             uint8_t* bgradata = k4a_image_get_buffer(transformed_color_image);
-            for(int y = 0; y < height; ++y){
-                for(int x = 0; x < width; ++x){
-                    int idx = y * width + x;
-                    pc->positions[idx] = Vec4f(pcdata[3 * idx] / 1000.f, pcdata[3 * idx + 1] / 1000.f, pcdata[3 * idx + 2] / 1000.f, 1.f);
-                }
-            }
-
             std::memcpy(pc->colors, bgradata, width * height * sizeof(int));
+            std::memcpy(pc->depth, pcdata, width * height * sizeof(uint16_t));
 
-            k4a_image_release(pcimg);
             k4a_image_release(depth_image);
             k4a_image_release(transformed_color_image);
             k4a_image_release(color_image);

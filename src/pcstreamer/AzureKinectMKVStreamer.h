@@ -147,7 +147,10 @@ public:
                     callback(pointClouds);
 
                 // Just relax a little bit (especially for buffer reader):
-                std::this_thread::sleep_for(1ms);
+                if(allowFrameSkipping)
+                    std::this_thread::sleep_for(25ms);
+                else
+                    std::this_thread::sleep_for(1ms);
             }
         });
     }

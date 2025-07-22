@@ -123,7 +123,7 @@ int main(int argc, char** argv)
         return 1;
 
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     // Initialize GLAD functions:
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -180,6 +180,9 @@ int main(int argc, char** argv)
     std::shared_ptr<Renderer> pcRenderer;
 
     bool shouldClose = false;
+    bool vSyncActive = false;
+
+    int absoluteFPS = 0;
 
     //
     Semaphore integratePCSemaphore(1);
@@ -281,9 +284,15 @@ int main(int argc, char** argv)
     fileDialog.SetTypeFilters({ ".json" });
     fileDialog.SetWindowSize(1060,620);
 
+    int loopCounter = 0;
+    auto lastReport = std::chrono::steady_clock::now();
+
     // Main loop which is executed every frame until the window is closed:
     while (!glfwWindowShouldClose(window))
     {
+        glfwSwapInterval(vSyncActive ? 1 : 0);
+
+        ++loopCounter;
         auto frameStartTime = high_resolution_clock::now();
 
         // Processes all glfw events:
@@ -407,34 +416,6 @@ int main(int argc, char** argv)
                 }
             }
 
-#ifdef USE_CUDA
-            ImGui::Separator();
-            if(ImGui::CollapsingHeader("Cuda Filter", ImGuiTreeNodeFlags_DefaultOpen)){
-                int activeFilters = 0;
-                for(std::shared_ptr<Filter>& filter : pcFilters)
-                    activeFilters += filter->isActive;
-
-                ImGui::TextUnformatted(std::string("Pipeline: " + std::to_string(pcFilters.size()) + " \t (Active: " + std::to_string(activeFilters) +")").c_str());
-                ImGui::Separator();
-
-                bool isOpenTmp = isFilterWindowOpen;
-                    if(isOpenTmp){
-                        ImGui::PushStyleColor(ImGuiCol_Button, IMGUI_BUTTONCOL_DISABLED);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IMGUI_BUTTONCOL_DISABLED_HOVER);
-                    }
-                    if(ImGui::Button("Open Window", ImVec2(ImGui::GetContentRegionAvail().x, 24 * dpiYScale))){
-                        isFilterWindowOpen = !isFilterWindowOpen;
-                    }
-                    if(isOpenTmp){
-                        ImGui::PopStyleColor(2);
-                    }
-
-                    ImGui::Separator();
-
-                ImGui::Text("");
-            }
-#endif
-
             ImGui::Separator();
 
             if(ImGui::CollapsingHeader("Rendering Techique", ImGuiTreeNodeFlags_DefaultOpen)){
@@ -517,6 +498,10 @@ int main(int argc, char** argv)
                 ImGui::Text("Integration: %.3f ms", integrationTime);
                 ImGui::Separator();
                 ImGui::Text("Render Loop (synced)*: %.3f ms", worldCPUTime);
+                ImGui::Separator();
+                ImGui::Text("Framerate*: %.i", absoluteFPS);
+                ImGui::Separator();
+                ImGui::Checkbox("VSync activated", &vSyncActive);
                 ImGui::Text("");
                 ImGui::Text("*Includes GUI, PC Passes & Screen Passes");
             }
@@ -579,18 +564,6 @@ int main(int argc, char** argv)
                     std::shared_ptr<Filter>& filter = pcFilters[i];
 
                     std::string name = "Unknown";
-#ifdef USE_CUDA
-                    std::shared_ptr<ClippingFilter> clippingFilter = std::dynamic_pointer_cast<ClippingFilter>(filter);
-                    std::shared_ptr<SpatialHoleFiller> spatialHoleFiller = std::dynamic_pointer_cast<SpatialHoleFiller>(filter);
-                    std::shared_ptr<ErosionFilter> erosionFilter = std::dynamic_pointer_cast<ErosionFilter>(filter);
-
-                    if(clippingFilter != nullptr)
-                        name = "Clipping (in World Space)";
-                    else if(spatialHoleFiller != nullptr)
-                        name = "Spatial Hole Filler";
-                    else if(erosionFilter != nullptr)
-                        name = "Erosion Filter";
-#endif
 
                     name += "##" + std::to_string(filter->instanceID);
 
@@ -622,27 +595,6 @@ int main(int argc, char** argv)
                     ImGui::PopFont();
                     bool headerOpened = ImGui::CollapsingHeader(name.c_str());
 
-#ifdef USE_CUDA
-                    if(headerOpened){
-                        ImGui::Separator();
-                        if(clippingFilter != nullptr){
-                            ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &clippingFilter->isActive);
-                            ImGui::DragFloat3("Min", &clippingFilter->min.x, 0.02f, -3.f, 0.f);
-                            ImGui::DragFloat3("Max", &clippingFilter->max.x, 0.02f, 0.f, 3.f);
-                        }
-
-                        if(spatialHoleFiller != nullptr){
-                            ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &spatialHoleFiller->isActive);
-                        }
-
-                        if(erosionFilter != nullptr){
-                            ImGui::Checkbox(("Active ##" + std::to_string(i)).c_str(), &erosionFilter->isActive);
-                            ImGui::SliderInt("Intensity", &erosionFilter->intensity, 1, 20);
-                            ImGui::SliderFloat("Max Dist", &erosionFilter->distanceThresholdPerMeter, 0.01f, 0.2f);
-                        }
-                        ImGui::Separator();
-                    }
-#endif
 
                     ImGui::Text("");
                 }
@@ -759,6 +711,14 @@ int main(int argc, char** argv)
 
         // Swap Buffers (waits for vsync (?)):
         glfwSwapBuffers(window);
+
+        auto now = std::chrono::steady_clock::now();
+        if (duration_cast<seconds>(now - lastReport).count() >= 1) {
+            absoluteFPS = loopCounter;
+
+            loopCounter = 0;
+            lastReport = now;
+        }
     }
 
 
@@ -777,9 +737,6 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
-    // Cleanup static shared memory (CUDA):
-    OrganizedPointCloud::cleanupStaticMemory();
 
     // Cleanup
     glfwDestroyWindow(window);

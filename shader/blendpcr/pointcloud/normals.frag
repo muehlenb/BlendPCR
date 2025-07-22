@@ -264,6 +264,9 @@ void main()
     vec2 texelSize = kernelSpread / textureSize(texture2D_mlsVertices, 0);
 
     vec3 a = texture(texture2D_mlsVertices, vScreenPos).xyz;
+	
+	if(a.z < 0.1)
+		return;
 
     // Calculate Covariance Matrix:
     mat3 B = mat3(0);

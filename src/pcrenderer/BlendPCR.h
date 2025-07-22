@@ -11,7 +11,7 @@
 using namespace std::chrono;
 
 // Uncomment if you want to print timings:
-// #define PRINT_TIMINGS
+//#define PRINT_TIMINGS
 
 #define CAMERA_COUNT 7
 #define CAMERA_IMAGE_WIDTH 640
@@ -37,10 +37,15 @@ class BlendPCR : public Renderer {
     unsigned int fbo_pcf_erosion[CAMERA_COUNT];
     unsigned int texture2D_pcf_erosion[CAMERA_COUNT];
 
+    // FBO for generating 3D vertices from depth image:
+    unsigned int fbo_genVertices[CAMERA_COUNT];
+
     // The textures for the input point clouds:
-    unsigned int texture2D_inputVertices[CAMERA_COUNT];
+    unsigned int texture2D_inputGenVertices[CAMERA_COUNT];
+    unsigned int texture2D_inputDepth[CAMERA_COUNT];
     unsigned int texture2D_inputRGB[CAMERA_COUNT];
     unsigned int texture2D_inputLookupImageTo3D[CAMERA_COUNT];
+    unsigned int texture2D_inputLookup3DToImage[CAMERA_COUNT];
 
     // The fbo and texture for the rejection pass:
     unsigned int fbo_rejection[CAMERA_COUNT];
@@ -94,6 +99,9 @@ class BlendPCR : public Renderer {
      */
     Shader pcfHoleFillingShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/filter/holeFilling.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/filter/holeFilling.frag");
     Shader pcfErosionShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/filter/erosion.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/filter/erosion.frag");
+
+    /** Generates 3D vertices (in m) from depth image (in mm) */
+    Shader vertexGenShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/vertexGenerator.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/pointcloud/vertexGenerator.frag");
 
     /**
      * Define all the shaders for the point cloud processing passes:
@@ -360,13 +368,23 @@ class BlendPCR : public Renderer {
             // Generate resources for INPUT
             {
                 // Input point cloud texture
-                generateAndBind2DTexture(texture2D_inputVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
+                generateAndBind2DTexture(texture2D_inputDepth[cameraID], imageWidth, imageHeight, GL_R16UI, GL_RED_INTEGER, GL_UNSIGNED_SHORT, GL_NEAREST);
 
                 // Input color texture
                 generateAndBind2DTexture(texture2D_inputRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
 
                 // Input lookup table
                 generateAndBind2DTexture(texture2D_inputLookupImageTo3D[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_NEAREST);
+
+                generateAndBind2DTexture(texture2D_inputLookup3DToImage[cameraID], LOOKUP_IMAGE_SIZE, LOOKUP_IMAGE_SIZE, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
+            }
+
+            {
+                glGenFramebuffers(1, &fbo_genVertices[cameraID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_genVertices[cameraID]);
+
+                generateAndBind2DTexture(texture2D_inputGenVertices[cameraID], imageWidth, imageHeight, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_inputGenVertices[cameraID], 0);
             }
 
             /**
@@ -488,12 +506,14 @@ public:
     Vec4f clipMax = Vec4f(1.0f, 2.0f, 1.0, 0.0);
 
     float implicitH = 0.01f;
-    float kernelRadius = 10.f;
+    float kernelRadius = 4.f;
     float kernelSpread = 1.f;
 
     bool useColorIndices = false;
 
     float uploadTime = 0;
+
+    bool newPointCloudsAvailable = false;
 
 
     ~BlendPCR(){
@@ -522,7 +542,7 @@ public:
             glDeleteFramebuffers(1, &fbo_pcf_erosion[cameraID]);
             glDeleteTextures(1, &texture2D_pcf_erosion[cameraID]);
 
-            glDeleteTextures(1, &texture2D_inputVertices[cameraID]);
+            glDeleteTextures(1, &texture2D_inputDepth[cameraID]);
             glDeleteTextures(1, &texture2D_inputRGB[cameraID]);
             glDeleteTextures(1, &texture2D_inputLookupImageTo3D[cameraID]);
             glDeleteTextures(1, &highres_colors[cameraID]);
@@ -560,12 +580,8 @@ public:
      * Integrate new RGB XYZ images.
      */
     virtual void integratePointClouds(std::vector<std::shared_ptr<OrganizedPointCloud>> pointClouds) override {
-        // This renderer accesses the point cloud in CPU-memory, so we need to ensure that it is there:
-        for(std::shared_ptr<OrganizedPointCloud> pc : pointClouds){
-            pc->toCPU();
-        }
-
         currentPointClouds = pointClouds;
+        newPointCloudsAvailable = true;
     };
 
     /**
@@ -619,246 +635,271 @@ public:
         //startTimeMeasure("1) UploadTextures");
 
         auto time = high_resolution_clock::now();
-        startTimeMeasure("1a) Highres");
 
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
-                std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
-                continue;
-            }
 
-            std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-            if(currentPC->highResColors != nullptr){
-                glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
-                glTexSubImage2D(GL_TEXTURE_2D,  0, 0, 0, 2048, 1536, GL_RGBA, GL_UNSIGNED_BYTE, currentPC->highResColors);
-            }
-        }
-        endTimeMeasure("1a) Highres");
-
-        startTimeMeasure("1b) Positions");
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
-                std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
-                continue;
-            }
-            std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-
-            if(currentPC->positions != nullptr){
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CAMERA_IMAGE_WIDTH, CAMERA_IMAGE_HEIGHT, GL_RGBA, GL_FLOAT, currentPC->positions);
-            }
-        }
-        endTimeMeasure("1b) Positions");
-
-        startTimeMeasure("1c) Colors");
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
-                std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
-                continue;
-            }
-
-            std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-            if(currentPC->colors != nullptr){
-                glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CAMERA_IMAGE_WIDTH, CAMERA_IMAGE_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, currentPC->colors);
-            }
-        }
-        endTimeMeasure("1c) Colors");
-
-        startTimeMeasure("1d) Lookup");
-        if(!lookupTablesUploaded){
+        if(newPointCloudsAvailable){
+            newPointCloudsAvailable = false;
+            startTimeMeasure("1a) Highres");
             for(unsigned int cameraID : cameraIDsThatCanBeRendered){
                 if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
                     std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
                     continue;
                 }
-
+    
                 std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
-                if(currentPC->lookupImageTo3D != nullptr){
-                    glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
-                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, currentPointClouds[cameraID]->width, currentPointClouds[cameraID]->height, GL_RG, GL_FLOAT, currentPC->lookupImageTo3D);
-                    lookupTablesUploaded = true;
+                if(currentPC->highResColors != nullptr){
+                    glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
+                    glTexSubImage2D(GL_TEXTURE_2D,  0, 0, 0, 2048, 1536, GL_RGBA, GL_UNSIGNED_BYTE, currentPC->highResColors);
                 }
             }
-        }
-        endTimeMeasure("1d) Lookup");
-        //endTimeMeasure("1) UploadTextures");
-
-
-        if(useReimplementedFilters){
-            startTimeMeasure("2a) Hole Filling Pass", true);
+            endTimeMeasure("1a) Highres");
+    
+            startTimeMeasure("1b) Positions");
             for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-                // Hole Filling Pass:
-                {
-                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
-                    pcfHoleFillingShader.bind();
+                if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
+                    std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
+                    continue;
+                }
+                std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
+    
+                if(currentPC->depth != nullptr){
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputDepth[cameraID]);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CAMERA_IMAGE_WIDTH, CAMERA_IMAGE_HEIGHT, GL_RED_INTEGER, GL_UNSIGNED_SHORT, currentPC->depth);
+                }
+            }
+            endTimeMeasure("1b) Positions");
+    
+            startTimeMeasure("1c) Colors");
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
+                    std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
+                    continue;
+                }
+    
+                std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
+                if(currentPC->colors != nullptr){
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, CAMERA_IMAGE_WIDTH, CAMERA_IMAGE_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, currentPC->colors);
+                }
+            }
+            endTimeMeasure("1c) Colors");
+    
+            startTimeMeasure("1d) Lookup");
+            if(!lookupTablesUploaded){
+                for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                    if(currentPointClouds[cameraID]->width != CAMERA_IMAGE_WIDTH || currentPointClouds[cameraID]->height != CAMERA_IMAGE_HEIGHT){
+                        std::cout << "SIZE ERROR! " << currentPointClouds[cameraID]->width << " x " << currentPointClouds[cameraID]->height << std::endl;
+                        continue;
+                    }
+    
+                    std::shared_ptr<OrganizedPointCloud> currentPC = currentPointClouds[cameraID];
+                    if(currentPC->lookupImageTo3D != nullptr){
+                        glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
+                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, currentPointClouds[cameraID]->width, currentPointClouds[cameraID]->height, GL_RG, GL_FLOAT, currentPC->lookupImageTo3D);
+                        lookupTablesUploaded = true;
+                    }
+                }
+            }
+            endTimeMeasure("1d) Lookup");
+            //endTimeMeasure("1) UploadTextures");
 
-                    unsigned int hfattachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-                    glDrawBuffers(2, hfattachments);
+            // Generate vertices from depth images:
+            {
+                startTimeMeasure("1e) Vertex Generation", true);
+                for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_genVertices[cameraID]);
+                    vertexGenShader.bind();
 
                     glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_inputVertices[cameraID]);
-                    pcfHoleFillingShader.setUniform("inputVertices", 1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_inputDepth[cameraID]);
+                    vertexGenShader.setUniform("depthTexture", 1);
 
                     glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
-                    pcfHoleFillingShader.setUniform("inputColors", 2);
-
-                    glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
-                    pcfHoleFillingShader.setUniform("lookupImageTo3D", 3);
+                    vertexGenShader.setUniform("lookupTexture", 2);
 
                     glBindVertexArray(VAO_quad);
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
+                endTimeMeasure("1e) Vertex Generation", true);
             }
-            endTimeMeasure("2a) Hole Filling Pass", true);
-
-            startTimeMeasure("2b) Erosion Pass", true);
+    
+            if(useReimplementedFilters){
+                startTimeMeasure("2a) Hole Filling Pass", true);
+                for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                    // Hole Filling Pass:
+                    {
+                        glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_holeFilling[cameraID]);
+                        pcfHoleFillingShader.bind();
+    
+                        unsigned int hfattachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+                        glDrawBuffers(2, hfattachments);
+    
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, texture2D_inputGenVertices[cameraID]);
+                        pcfHoleFillingShader.setUniform("inputVertices", 1);
+    
+                        glActiveTexture(GL_TEXTURE2);
+                        glBindTexture(GL_TEXTURE_2D, texture2D_inputRGB[cameraID]);
+                        pcfHoleFillingShader.setUniform("inputColors", 2);
+    
+                        glActiveTexture(GL_TEXTURE3);
+                        glBindTexture(GL_TEXTURE_2D, texture2D_inputLookupImageTo3D[cameraID]);
+                        pcfHoleFillingShader.setUniform("lookupImageTo3D", 3);
+    
+                        glBindVertexArray(VAO_quad);
+                        glDrawArrays(GL_TRIANGLES, 0, 6);
+                    }
+                }
+                endTimeMeasure("2a) Hole Filling Pass", true);
+    
+                startTimeMeasure("2b) Erosion Pass", true);
+                for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                    // Erosion Pass:
+                    {
+                        glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
+                        pcfErosionShader.bind();
+    
+                        unsigned int eattachments[1] = { GL_COLOR_ATTACHMENT0};
+                        glDrawBuffers(1, eattachments);
+    
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID]);
+                        pcfErosionShader.setUniform("inputVertices", 1);
+    
+                        glBindVertexArray(VAO_quad);
+                        glDrawArrays(GL_TRIANGLES, 0, 6);
+                    }
+                }
+                endTimeMeasure("2b) Erosion Pass", true);
+            }
+    
+            startTimeMeasure("3a) RejectedPass", true);
             for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-                // Erosion Pass:
+                // Rejected PASS:
                 {
-                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
-                    pcfErosionShader.bind();
-
-                    unsigned int eattachments[1] = { GL_COLOR_ATTACHMENT0};
-                    glDrawBuffers(1, eattachments);
-
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejection[cameraID]);
+                    rejectionShader.bind();
+    
                     glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID]);
-                    pcfErosionShader.setUniform("inputVertices", 1);
-
+                    glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_holeFilledVertices[cameraID] : texture2D_inputGenVertices[cameraID]);
+                    rejectionShader.setUniform("pointCloud", 1);
+    
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
+                    rejectionShader.setUniform("colorTexture", 2);
+    
+                    rejectionShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
+                    rejectionShader.setUniform("shouldClip", shouldClip);
+                    rejectionShader.setUniform("clipMin", clipMin);
+                    rejectionShader.setUniform("clipMax", clipMax);
+    
                     glBindVertexArray(VAO_quad);
                     glDrawArrays(GL_TRIANGLES, 0, 6);
                 }
             }
-            endTimeMeasure("2b) Erosion Pass", true);
-        }
-
-        startTimeMeasure("3a) RejectedPass", true);
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            // Rejected PASS:
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_rejection[cameraID]);
-                rejectionShader.bind();
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
-                rejectionShader.setUniform("pointCloud", 1);
-
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ? texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
-                rejectionShader.setUniform("colorTexture", 2);
-
-                rejectionShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
-                rejectionShader.setUniform("shouldClip", shouldClip);
-                rejectionShader.setUniform("clipMin", clipMin);
-                rejectionShader.setUniform("clipMax", clipMax);
-
-                glBindVertexArray(VAO_quad);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+            endTimeMeasure("3a) RejectedPass", true);
+    
+            startTimeMeasure("3b) EdgeProximity", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // Edge Distance PASS:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeProximity[cameraID]);
+                    edgeProximityShader.bind();
+    
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_rejection[cameraID]);
+                    edgeProximityShader.setUniform("rejectedTexture", 1);
+                    edgeProximityShader.setUniform("kernelRadius", 10);
+    
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
             }
-        }
-        endTimeMeasure("3a) RejectedPass", true);
+            endTimeMeasure("3b) EdgeProximity", true);
+    
+            startTimeMeasure("3c) MLS", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // Texture a(x) PASS:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
+                    mlsShader.bind();
 
-        startTimeMeasure("3b) EdgeProximity", true);
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            // Edge Distance PASS:
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_edgeProximity[cameraID]);
-                edgeProximityShader.bind();
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_rejection[cameraID]);
-                edgeProximityShader.setUniform("rejectedTexture", 1);
-                edgeProximityShader.setUniform("kernelRadius", 10);
-
-                glBindVertexArray(VAO_quad);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+                    mlsShader.setUniform("kernelRadius", int(kernelRadius));
+                    mlsShader.setUniform("kernelSpread", kernelSpread);
+                    mlsShader.setUniform("p_h", implicitH);
+    
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_holeFilledVertices[cameraID] : texture2D_inputGenVertices[cameraID]);
+                    mlsShader.setUniform("pointCloud", 1);
+    
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                    mlsShader.setUniform("edgeProximity", 2);
+    
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
             }
-        }
-        endTimeMeasure("3b) EdgeProximity", true);
-
-        startTimeMeasure("3c) MLS", true);
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            // Texture a(x) PASS:
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_mls[cameraID]);
-                mlsShader.bind();
-
-                mlsShader.setUniform("kernelRadius", kernelRadius);
-                mlsShader.setUniform("kernelSpread", kernelSpread);
-                mlsShader.setUniform("p_h", implicitH);
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
-                mlsShader.setUniform("pointCloud", 1);
-
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-                mlsShader.setUniform("edgeProximity", 2);
-
-                glBindVertexArray(VAO_quad);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+            endTimeMeasure("3c) MLS", true);
+    
+            startTimeMeasure("3d) Normal", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // Texture n(x) PASS:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
+                    //gl.glDisable(GL_DEPTH_TEST);
+                    normalsShader.bind();
+    
+                    normalsShader.setUniform("kernelRadius", kernelRadius);
+                    normalsShader.setUniform("kernelSpread", kernelSpread);
+    
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                    normalsShader.setUniform("texture2D_mlsVertices", 1);
+    
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                    normalsShader.setUniform("texture2D_edgeProximity", 2);
+    
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_holeFilledVertices[cameraID] : texture2D_inputGenVertices[cameraID]);
+                    normalsShader.setUniform("texture2D_inputVertices", 3);
+    
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
             }
-        }
-        endTimeMeasure("3c) MLS", true);
-
-        startTimeMeasure("3d) Normal", true);
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            // Texture n(x) PASS:
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_normals[cameraID]);
-                //gl.glDisable(GL_DEPTH_TEST);
-                normalsShader.bind();
-
-                normalsShader.setUniform("kernelRadius", kernelRadius);
-                normalsShader.setUniform("kernelSpread", kernelSpread);
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
-                normalsShader.setUniform("texture2D_mlsVertices", 1);
-
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-                normalsShader.setUniform("texture2D_edgeProximity", 2);
-
-                glActiveTexture(GL_TEXTURE3);
-                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_erosion[cameraID] : texture2D_inputVertices[cameraID]);
-                normalsShader.setUniform("texture2D_inputVertices", 3);
-
-                glBindVertexArray(VAO_quad);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
+            endTimeMeasure("3d) Normal", true);
+    
+            startTimeMeasure("3e) Influence", true);
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                // OVERLAP PASS:
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
+                    qualityEstimateShader.bind();
+    
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                    qualityEstimateShader.setUniform("vertices", 0);
+    
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
+                    qualityEstimateShader.setUniform("normals", 1);
+    
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                    qualityEstimateShader.setUniform("edgeDistances", 2);
+    
+                    glBindVertexArray(VAO_quad);
+                    glDrawArrays(GL_TRIANGLES, 0, 6);
+                }
             }
+            endTimeMeasure("3e) Influence", true);
         }
-        endTimeMeasure("3d) Normal", true);
 
-        startTimeMeasure("3e) Influence", true);
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            // OVERLAP PASS:
-            {
-                glBindFramebuffer(GL_FRAMEBUFFER, fbo_qualityEstimate[cameraID]);
-                qualityEstimateShader.bind();
-
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
-                qualityEstimateShader.setUniform("vertices", 0);
-
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
-                qualityEstimateShader.setUniform("normals", 1);
-
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-                qualityEstimateShader.setUniform("edgeDistances", 2);
-
-                glBindVertexArray(VAO_quad);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-            }
-        }
-        endTimeMeasure("3e) Influence", true);
-
-        glFlush();
+        //glFlush();
         auto time2 = high_resolution_clock::now();
         uploadTime = duration_cast<microseconds>(time2 - time).count() / 1000.f;
 

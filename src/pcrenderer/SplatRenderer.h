@@ -60,11 +60,6 @@ public:
      * Integrate new RGB XYZ images.
      */
     virtual void integratePointClouds(std::vector<std::shared_ptr<OrganizedPointCloud>> pointClouds) override {
-        // This renderer accesses the point cloud in CPU-memory, so we need to ensure that it is there:
-        for(std::shared_ptr<OrganizedPointCloud> pc : pointClouds){
-            pc->toCPU();
-        }
-
         currentPointClouds = pointClouds;
 
     };
@@ -73,6 +68,7 @@ public:
      * Renders the point cloud
      */
     virtual void render(Mat4f projection, Mat4f view) override {
+        /*
         for(std::shared_ptr<OrganizedPointCloud> pc : currentPointClouds){
             if(pc == nullptr || pc->width == 0 || pc->height == 0)
                 continue;
@@ -139,5 +135,6 @@ public:
             glDrawArrays(GL_POINTS, 0, pointNum);
             glBindVertexArray(0);
         }
+            */
     };
 };

@@ -24,7 +24,7 @@ void main() {
     // Filter all triangles where vertices contains invalid pixels in
     // a-kernel texture:
     for(int i=0; i<3; ++i)
-        if(length(vCamPos[i].xyz) < 0.01)
+        if(vCamPos[i].z < 0.01)
             return;
 
     // Filter all triangles where vertices contains invalid pixels in
