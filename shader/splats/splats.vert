@@ -7,11 +7,13 @@ out vec4 color_from_vs;
 out vec4 world_position;
 
 /** Position texture */
-uniform sampler2D positionTexture;
+uniform usampler2D depthTexture;
 
 /** Color texture */
 uniform sampler2D colorTexture;
 
+/** Lookup texture */
+uniform sampler2D lookupTexture;
 /**
  * Projection matrix which performs a perspective transformation.
  */
@@ -35,12 +37,16 @@ uniform mat4 model;
  */
 void main()
 {
-	ivec2 texSize = textureSize(positionTexture, 0);
+	ivec2 texSize = textureSize(depthTexture, 0); 
 	
 	float u = float(gl_VertexID % texSize.x + 0.5) / texSize.x;
 	float v = float(gl_VertexID / texSize.x + 0.5) / texSize.y;
 	
-	vec4 position = texture(positionTexture, vec2(u, v));
+	float depth = float(texture(depthTexture, vec2(u, v)).x) / 1000.0;
+	vec2 lookup = texture(lookupTexture, vec2(u, v)).xy;
+	
+	vec4 position = vec4(lookup.x * depth, lookup.y * depth , depth, 1.0);
+	
 	vec4 color = texture(colorTexture, vec2(u, v));
 	
 	color_from_vs = color;
