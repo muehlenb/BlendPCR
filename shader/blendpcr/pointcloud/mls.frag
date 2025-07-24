@@ -19,7 +19,7 @@ out vec4 FragColor;
  */
 float calculateTheta(vec3 p, vec3 x){
     float d = distance(p, x);
-    return pow(2.71828, -(d*d) / (p_h*p_h));
+    return exp(-(d*d) / (p_h*p_h));
 }
 
 /**
@@ -63,12 +63,6 @@ void main()
             float weight = theta * clamp(edgeDist, 0.5, 1.0);
             sumPoints += p * weight;
 
-            // Irgendetwas ist hier noch sehr merkwürdig, da sumWeights
-            // eigentlich niemals 0 sein dürfte. Allerdings ist es dies,
-            // wenn kein clamp genutzt wird, an wenigen Vertices!
-            // Der Grund, warum dies nicht passieren dürfte, ist, dass
-            // bei dX=0 und dY=0 gelten sollte: mid = p. Die Distanz
-            // dieser beiden Punkte ist 0.
             sumWeights += clamp(weight,0.000001,100000);
         }
     }

@@ -20,7 +20,7 @@ void main()
         return;
     }
 
-    int rad = 8;
+    int rad = 5;
 
     float maxInfluence = 0.0;
     for(float dX = -rad; dX <= rad; dX += 1){

@@ -271,7 +271,7 @@ void main()
     // Calculate Covariance Matrix:
     mat3 B = mat3(0);
 
-    int radius = 5;
+    int radius = 2;
 
     for(int dX = -radius; dX <= radius; ++dX){
         for(int dY = -radius; dY <= radius; ++dY){
