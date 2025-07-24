@@ -9,8 +9,8 @@ uniform sampler2D inputVertices;
 uniform sampler2D inputColors;
 uniform sampler2D lookupImageTo3D;
 
-uniform float requiredValidNeighborRatio = 0.1f;
-uniform int intensity = 3;
+uniform float requiredValidNeighborRatio = 0.5f;
+uniform int intensity = 2;
 uniform float maxDistance = 0.1f;
 
 layout (location = 0) out vec4 FragPosition;
