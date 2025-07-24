@@ -753,26 +753,6 @@ public:
                     }
                 }
                 endTimeMeasure("2a) Hole Filling Pass", true);
-    
-                startTimeMeasure("2b) Erosion Pass", true);
-                for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-                    // Erosion Pass:
-                    {
-                        glBindFramebuffer(GL_FRAMEBUFFER, fbo_pcf_erosion[cameraID]);
-                        pcfErosionShader.bind();
-    
-                        unsigned int eattachments[1] = { GL_COLOR_ATTACHMENT0};
-                        glDrawBuffers(1, eattachments);
-    
-                        glActiveTexture(GL_TEXTURE1);
-                        glBindTexture(GL_TEXTURE_2D, texture2D_pcf_holeFilledVertices[cameraID]);
-                        pcfErosionShader.setUniform("inputVertices", 1);
-    
-                        glBindVertexArray(VAO_quad);
-                        glDrawArrays(GL_TRIANGLES, 0, 6);
-                    }
-                }
-                endTimeMeasure("2b) Erosion Pass", true);
             }
     
             startTimeMeasure("3a) RejectedPass", true);
