@@ -27,8 +27,9 @@ class SimpleMeshRenderer : public Renderer {
     unsigned int bufferWidth = -1;
     unsigned int bufferHeight = -1;
 
-    GLuint texture_positions = 0;
+    GLuint texture_depth = 0;
     GLuint texture_colors = 0;
+    GLuint texture_lookup = 0;
 
     unsigned int* indices = nullptr;
 
@@ -50,8 +51,9 @@ public:
         glGenBuffers(1, &vbo_positions);
         glGenVertexArrays(1, &vao);
 
-        glGenTextures(1, &texture_positions);
+        glGenTextures(1, &texture_depth);
         glGenTextures(1, &texture_colors);
+        glGenTextures(1, &texture_lookup);
     }
 
     ~SimpleMeshRenderer(){
@@ -60,8 +62,9 @@ public:
         glDeleteBuffers(1, &vbo_indices);
         glDeleteBuffers(1, &vbo_positions);
 
-        glDeleteTextures(1, &texture_positions);
+        glDeleteTextures(1, &texture_depth);
         glDeleteTextures(1, &texture_colors);
+        glDeleteTextures(1, &texture_lookup);
     }
 
     /**
@@ -75,7 +78,6 @@ public:
      * Renders the point cloud
      */
     virtual void render(Mat4f projection, Mat4f view) override {
-        /*
         for(std::shared_ptr<OrganizedPointCloud> pc : currentPointClouds){
             if(pc == nullptr || pc->width == 0 || pc->height == 0)
                 continue;
@@ -112,19 +114,19 @@ public:
 
                 // Fill vertex buffer:
                 glBindBuffer(GL_ARRAY_BUFFER, vbo_positions);
-                glBufferData(GL_ARRAY_BUFFER, pointNum * sizeof(Vec4f), nullptr, GL_DYNAMIC_DRAW);
-                glBufferData(GL_ARRAY_BUFFER, pointNum * sizeof(Vec4f), &pc->positions[0], GL_DYNAMIC_DRAW);
-                glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vec4f), 0);
+                glBufferData(GL_ARRAY_BUFFER, pointNum * sizeof(uint16_t), nullptr, GL_DYNAMIC_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, pointNum * sizeof(uint16_t), &pc->depth[0], GL_DYNAMIC_DRAW);
+                glVertexAttribPointer(0, 1, GL_UNSIGNED_SHORT, GL_FALSE, sizeof(Vec4f), 0);
                 glEnableVertexAttribArray(0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
 
                 glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, texture_positions);
+                glBindTexture(GL_TEXTURE_2D, texture_depth);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, pc->width, pc->height, 0, GL_RGBA, GL_FLOAT, &pc->positions[0]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_R16UI, pc->width, pc->height, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, &pc->depth[0]);
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, texture_colors);
@@ -133,6 +135,15 @@ public:
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pc->width, pc->height, 0, GL_RGBA,  GL_UNSIGNED_BYTE, &pc->colors[0]);
+
+
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, texture_lookup);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, pc->width, pc->height, 0, GL_RG,  GL_FLOAT, &pc->lookupImageTo3D[0]);
 
                 bufferWidth = pc->width;
                 bufferHeight = pc->height;
@@ -143,12 +154,16 @@ public:
             glCullFace(GL_FRONT);
 
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture_positions);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pc->width, pc->height, GL_RGBA, GL_FLOAT, &pc->positions[0]);
+            glBindTexture(GL_TEXTURE_2D, texture_depth);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pc->width, pc->height, GL_RED_INTEGER, GL_UNSIGNED_SHORT, &pc->depth[0]);
 
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, texture_colors);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pc->width, pc->height, GL_RGBA, GL_UNSIGNED_BYTE, &pc->colors[0]);
+
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pc->width, pc->height, GL_RG, GL_FLOAT, &pc->lookupImageTo3D[0]);
 
             glFlush();
             auto time2 = high_resolution_clock::now();
@@ -162,8 +177,9 @@ public:
             simpleMeshShader.setUniform("model", pc->modelMatrix);
             simpleMeshShader.setUniform("maxEdgeLength", maxEdgeLength);
             simpleMeshShader.setUniform("discardBlackPixels", discardBlackPixels);
-            simpleMeshShader.setUniform("positionTexture", 0);
+            simpleMeshShader.setUniform("depthTexture", 0);
             simpleMeshShader.setUniform("colorTexture", 1);
+            simpleMeshShader.setUniform("lookupTexture", 2);
 
             // Draw triangles:
             glDrawElements(GL_TRIANGLES, bufferWidth * bufferHeight * 6, GL_UNSIGNED_INT, NULL);
@@ -171,6 +187,5 @@ public:
 
             glCullFace(GL_FRONT);
         }
-        */
     };
 };
