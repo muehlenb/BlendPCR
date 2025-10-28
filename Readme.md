@@ -11,18 +11,32 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 ![image](images/teaser.jpg)
 
 ## Updates
+**28th October 2025**
+- Added Mesh LOD (Resolution) parameter
+- Removed Geometry Shader for performance improvements
+- Added Framebuffer-Rendering (parameters `resultWidth` and `resultHeight` currently have to be specified in the `main.cpp`).
+
+**Previous**
 - CUDA filter replaced by full OpenGL 3.3 implementation
 - WiP of Unreal Engine 5 VR integration (see `unreal_engine_5_streamer` branch)
 - Performance Optimization
-  - Bottleneck of uploading point clouds to GPU were solved by uploading `uint16_t*` depth image and generate the point cloud on the GPU
+- Bottleneck of uploading point clouds to GPU were solved by uploading `uint16_t*` depth image and generate the point cloud on the GPU
 
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
-- [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), *(fixed shader paths)*, OpenGL 3.3 Only Version 
+- [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), *(fixed shader paths)* 
+
+(Note: currently does not contain the newest performance optimization.)
   
-**Current Benchmark**, rendering at **3580 x 2066** while fusing **7** Microsoft Azure Kinects @ 30 Hz simultaneously on NVIDIA GeForce 4090 RTX:
-- Single Person: approx. **240 fps**
-- Whole Scene: approx. **140 fps**
+## Current Benchmark
+
+Rendering at **3840 x 2160** while fusing **7** Microsoft Azure Kinects @ 30 Hz simultaneously on NVIDIA GeForce 4090 RTX:
+- Single Person: approx. **232 fps**
+- Whole Scene: approx. **204 fps**
+
+Rendering at **1920 x 1080** with **Mesh LOD 3** (almost same quality):
+- Single Person: approx. **666 fps** (1.5 ms overall)
+- Whole Scene: approx. **588 fps** (1.7 ms overall)
 
 ## Build Requirements
 
@@ -80,14 +94,9 @@ It is recommended to download only the `dataset_hierarchy.tgz`, which provides m
 When loading the CWIPC-SXR dataset, you have two options:
 
 - **CWIPC-SXR (Streamed):** This mode streams the RGB-D camera recordings directly from the hard drive. Operations such as reading from the hard drive, color conversion (MJPEG to BGRA32), and point cloud generation are performed on the fly. Real-time streaming is usually not feasible when using seven cameras.
-- **CWIPC-SXR (Buffered):** This mode initially reads the complete RGB-D recordings, performs color conversion, and generates point clouds. While this process can be time-consuming and requires significant RAM, it enables subsequent real-time streaming of the recordings. *(**Note:** (1) Due to memory requirements, no high resolution color textures are loaded and (2) don't use this buffered version with CUDA filters, since the CUDA filters alter the buffer during playback)*
+- **CWIPC-SXR (Buffered):** This mode initially reads the complete RGB-D recordings, performs color conversion, and generates point clouds. While this process can be time-consuming and requires significant RAM, it enables subsequent real-time streaming of the recordings. *(**Note:** Due to memory requirements, no high resolution color textures are loaded)*
 
 After choosing your preferred mode, a file dialog will appear, prompting you to select the `cameraconfig.json` file for the scene you wish to load. Playback will commence a few seconds or minutes after the selection, depending on the chosen Source Mode.
-
-### Filters
-The filter section is intended for the implemented CUDA filters. If compiled without CUDA, no filters can be selected.
-
-When compiled with CUDA, the used filter configuration which was used in the paper is activated by default.
 
 ### Rendering Technique
 You can switch between following rendering techniques:
@@ -97,15 +106,6 @@ You can switch between following rendering techniques:
 - **BlendPCR:** The BlendPCR implementation, which we described in our paper. Note that you can activate the 'Reimpl. Filters' option, which enables a GLSL reimplementation of the CUDA filters we used in the evaluation of our paper. 
 
 *Note: For High Resolution Color Textures - named **BlendPCR (HR)** in the paper -, enable **High Resolution Encoding** both in the Source Mode **and** in the BlendPCR renderer.*
-
-## Remarks
-### Point Cloud Filters via CUDA
-
-In our research paper, we conducted visual comparisons among the SplatRenderer, Simple Mesh Renderer, TSDF, and BlendPCR. Each renderer used the same set of CUDA filters (*ErosionFilter*, *SpatialHoleFilter*, and *ClippingFilter*), located in the `src/pcfilter/` folder. To use these CUDA filters instead of the reimplemented GLSL filters, enable them in the "Filter" section and disable "Reimpl. Filters" in the BlendPCR section. Note that CUDA filters can only be used if `USE_CUDA` was set to `ON` in the CMAKE configuration during compilation.
-
-Please note that *SpatialHoleFiller* and *ErosionFilter* have also been implemented as an initial GLSL pass in the `BlendPCR` renderer, which is enabled by default. This allows us to achieve similar visual quality even without CUDA.
-
-**Note on visual quality**: Without CUDA, the SplatRenderer and Simple Mesh Renderer may display lower visual quality than shown in our paper, though the BlendPCR renderer will maintain almost the same quality. Nevertheless, there are further possibilities for improving quality, for example by improving the reimplemented erosion and hole filling filters (try to activate and deactive the reimpl. filters).
 
 
 ## Results
