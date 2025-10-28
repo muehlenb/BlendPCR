@@ -145,7 +145,6 @@ set(RESOURCES
     shader/blendpcr/pointcloud/qualityEstimate.frag
 
     shader/blendpcr/screen/separateRendering.vert
-    shader/blendpcr/screen/separateRendering.geo
     shader/blendpcr/screen/separateRendering.frag
 
     shader/blendpcr/screen/majorCam.vert

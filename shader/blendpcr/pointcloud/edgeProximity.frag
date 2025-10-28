@@ -20,11 +20,15 @@ void main()
         return;
     }
 
+	int steps = 3;
     int rad = 5;
 
     float maxInfluence = 0.0;
-    for(float dX = -rad; dX <= rad; dX += 1){
-        for(float dY = -rad; dY <= rad; dY += 1){
+    for(float _dX = -rad*steps; _dX <= rad*steps; _dX += steps){
+        for(float _dY = -rad*steps; _dY <= rad*steps; _dY += steps){
+			float dX = _dX / steps;
+			float dY = _dY / steps;
+		
             vec2 offset = vec2(dX, dY) * texelSize;
             vec2 coord = vScreenPos + offset;
             float value = texture(rejectedTexture, coord).r;

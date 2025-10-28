@@ -19,5 +19,5 @@ std::shared_ptr<Streamer> Streamer::constructStreamerInstance(int type, std::str
     return nullptr;
 };
 
-int Streamer::BufferedMaxFrameCount = 200;
-int Streamer::BufferedStartFrameOffset = 90;
+int Streamer::BufferedMaxFrameCount = 360;
+int Streamer::BufferedStartFrameOffset = 200;

@@ -5,7 +5,6 @@
 #include "src/pcrenderer/Renderer.h"
 
 #include "src/util/gl/Shader.h"
-#include "src/util/gl/GLMesh.h"
 
 #include <chrono>
 

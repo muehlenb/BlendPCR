@@ -2,12 +2,12 @@
 // Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
 #version 330 core
 
-in vec4 fColor;
-in vec4 fPos;
-in vec3 fNormal;
-in float fEdgeDistance;
-in vec2 fPosAlpha;
-in vec2 fTexCoord;
+in vec4 vColor;
+in vec4 vPos;
+in vec3 vNormal;
+in float vEdgeDistance;
+in vec2 vPosAlpha;
+in vec2 vTexCoord;
 
 uniform sampler2D texture2D_colors;
 uniform sampler2D highResTexture;
@@ -57,15 +57,15 @@ vec2 decodeTexCoords(float r, float g, int b){
 void main()
 {
     if(useColorIndices){
-        vec2 tex0 = texture(texture2D_colors, fTexCoord - vec2(0.0, 0.0028)).ra;
-        vec2 tex1 = texture(texture2D_colors, fTexCoord - vec2(0.0, 0.0021)).ra;
-        vec2 tex2 = texture(texture2D_colors, fTexCoord - vec2(0.0, 0.0014)).ra;
-        vec2 tex3 = texture(texture2D_colors, fTexCoord - vec2(0.0, 0.0007)).ra;
-        vec2 tex4 = texture(texture2D_colors, fTexCoord).ra;
-        vec2 tex5 = texture(texture2D_colors, fTexCoord + vec2(0.0, 0.0007)).ra;
-        vec2 tex6 = texture(texture2D_colors, fTexCoord + vec2(0.0, 0.0014)).ra;
-        vec2 tex7 = texture(texture2D_colors, fTexCoord + vec2(0.0, 0.0021)).ra;
-        vec2 tex8 = texture(texture2D_colors, fTexCoord + vec2(0.0, 0.0028)).ra;
+        vec2 tex0 = texture(texture2D_colors, vTexCoord - vec2(0.0, 0.0028)).ra;
+        vec2 tex1 = texture(texture2D_colors, vTexCoord - vec2(0.0, 0.0021)).ra;
+        vec2 tex2 = texture(texture2D_colors, vTexCoord - vec2(0.0, 0.0014)).ra;
+        vec2 tex3 = texture(texture2D_colors, vTexCoord - vec2(0.0, 0.0007)).ra;
+        vec2 tex4 = texture(texture2D_colors, vTexCoord).ra;
+        vec2 tex5 = texture(texture2D_colors, vTexCoord + vec2(0.0, 0.0007)).ra;
+        vec2 tex6 = texture(texture2D_colors, vTexCoord + vec2(0.0, 0.0014)).ra;
+        vec2 tex7 = texture(texture2D_colors, vTexCoord + vec2(0.0, 0.0021)).ra;
+        vec2 tex8 = texture(texture2D_colors, vTexCoord + vec2(0.0, 0.0028)).ra;
 
         int bValues[9];
         bValues[0] = int((tex0.x * 256)) + (int((tex0.y * 256)) << 8);
@@ -80,13 +80,13 @@ void main()
 
         int b = mode(bValues);
 
-        vec4 texCoord = texture(texture2D_colors, fTexCoord).rgba;
+        vec4 texCoord = texture(texture2D_colors, vTexCoord).rgba;
 
         FragColor = texture(highResTexture, decodeTexCoords(texCoord.b * 256, texCoord.g * 256, b)).bgra;
     } else {
-        FragColor = fColor.bgra;
+        FragColor = texture(texture2D_colors, vTexCoord).bgra;
     }
 
-    FragNormal = vec4(fNormal, fPosAlpha.y);
-    FragPosition = vec4(fPos.xyz, fPosAlpha.x);
+    FragNormal = vec4(vNormal, vPosAlpha.y);
+    FragPosition = vec4(vPos.xyz, vPosAlpha.x);
 }

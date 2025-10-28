@@ -16,8 +16,6 @@ Presented at ICAT-EGVE 2024 **(Best Paper Award)**
 - Performance Optimization
   - Bottleneck of uploading point clouds to GPU were solved by uploading `uint16_t*` depth image and generate the point cloud on the GPU
 
-
-
 ## Pre-built Binaries
 If you only want to test the BlendPCR renderer, without editing the implementation, we also offer pre-built binaries:
 - [Download Windows (64-Bit), main branch](https://cgvr.cs.uni-bremen.de/papers/icategve24/builds/blendpcr_win64_main.html), *(fixed shader paths)*, OpenGL 3.3 Only Version 
@@ -37,7 +35,7 @@ If you only want to test the BlendPCR renderer, without editing the implementati
 *Note: As the C++ compiler, we have currently only tested MSVC, but other compilers that support the Azure Kinect SDK 1.4.1 are likely to work as well.*
 
 ### Optional:
- - **CUDA Toolkit 12.1:** CUDA Kernels are currently only used for a *SpatialHoleFiller*, *ErosionFilter* and *ClippingFilter*. We have reimplemented these filters as GLSL passes in case of *BlendPCR*, so even without CUDA almost the same visual quality is achieved as presented in the paper. To enable CUDA compilation, you need to explicitly set the CMake variable `USE_CUDA` to `ON`.
+ - **CUDA Toolkit 12.1 (not used anymore)** We have reimplemented these filters as GLSL passes in case of *BlendPCR*, so CUDA is not used anymore.
  
 
 *Additionally, this project uses small open-source libraries that we have directly integrated into our source code, so no installation is required. You can find them in the `lib` folder. 

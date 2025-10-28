@@ -55,6 +55,7 @@
 #include "src/pcfilter/ClippingFilter.h"
 #endif
 
+
 #include <imfilebrowser.h>
 
 #include <chrono>
@@ -132,6 +133,9 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    GLint samples = 0;
+    glGetIntegerv(GL_SAMPLES, &samples);
+    std::cout << "Default framebuffer samples: " << samples << std::endl;
 
     // Setup Dear ImGui style:
     ImGui::StyleColorsDark();
@@ -148,11 +152,11 @@ int main(int argc, char** argv)
 
     // These variables sum the mouse movements in x and y direction
     // while the mouse was pressed in window coordinates (i.e. pixels):
-    float viewPositionX = -float(M_PI * 0.2);
+    float viewPositionX = -float(M_PI * 0.16);
     float viewPositionY = -0.2f;
-    float viewDistance = 2.6f;
+    float viewDistance = 1.3f;
 
-    Vec4f viewTarget(0, 0.9f, 0);
+    Vec4f viewTarget(0, 1.1f, 0);
 
     // Opened windows:
     bool isFilterWindowOpen = false;
@@ -184,7 +188,14 @@ int main(int argc, char** argv)
 
     int absoluteFPS = 0;
 
-    //
+    // Frame buffer width for BlendPCR:
+    int resultWidth = 1920;
+
+    // Frame buffer height for BlendPCR:
+    int resultHeight = 1080;
+
+    float fov = 75;
+
     Semaphore integratePCSemaphore(1);
 
     // Last point clouds:
@@ -471,7 +482,15 @@ int main(int argc, char** argv)
                     ImGui::DragFloat3("Clip Min", &pcBlendPCRenderer->clipMin.x, 0.02f, -2.f, 0.5f);
                     ImGui::DragFloat3("Clip Max", &pcBlendPCRenderer->clipMax.x, 0.02f, -0.5f, 2.f);
                     ImGui::Separator();
+                    ImGui::Text("");
+                    ImGui::Separator();
+                    ImGui::Text("Optimization Settings:");
+                    ImGui::Separator();
+                    ImGui::SliderInt("Mesh Stride", &pcBlendPCRenderer->stride, 1, 3);
+                    ImGui::Separator();
+                    ImGui::Text("Framebuffer: %i x %i", pcBlendPCRenderer->result_width, pcBlendPCRenderer->result_height);
                 }
+
 
                 ImGui::Separator();
                 ImGui::Text("");
@@ -483,9 +502,20 @@ int main(int argc, char** argv)
                 if(pcTechniqueItemIdx != pcTechniqueLoadedIdx){
                     integratePCSemaphore.acquire();
                     pcRenderer = Renderer::constructAlgorithmInstance(pcTechniqueItemIdx);
+                    std::shared_ptr<BlendPCR> pcBlendPCRenderer = std::dynamic_pointer_cast<BlendPCR>(pcRenderer);
+                    if(pcBlendPCRenderer != nullptr){
+                        pcBlendPCRenderer->result_width = resultWidth;
+                        pcBlendPCRenderer->result_height = resultHeight;
+                        pcBlendPCRenderer->stride = 1;
+                        pcBlendPCRenderer->screensNumber = 1;
+                        pcBlendPCRenderer->shouldClip = false;
+                    }
                     if(lastProcessedPointClouds.size() > 0)
                         pcRenderer->integratePointClouds(lastProcessedPointClouds);
                     pcTechniqueLoadedIdx = pcTechniqueItemIdx;
+
+
+
                     integratePCSemaphore.release();
                 }
             }
@@ -624,8 +654,10 @@ int main(int argc, char** argv)
             viewPositionY -= mouseDelta.y * 0.01f;
         }
 
+        float tmpViewPosX = viewPositionX;
+
         // Generate a rotation matrix (which is changed when the mouse is dragged):
-        Mat4f rotationMat({cos(viewPositionX), -sin(viewPositionY) * -sin(viewPositionX), cos(viewPositionY) * -sin(viewPositionX), 0, 0, cos(viewPositionY), sin(viewPositionY), 0, sin(viewPositionX), -sin(viewPositionY) * cos(viewPositionX), cos(viewPositionY) * cos(viewPositionX), 0, 0,0,0,1});
+        Mat4f rotationMat({cos(tmpViewPosX), -sin(viewPositionY) * -sin(tmpViewPosX), cos(viewPositionY) * -sin(tmpViewPosX), 0, 0, cos(viewPositionY), sin(viewPositionY), 0, sin(tmpViewPosX), -sin(viewPositionY) * cos(tmpViewPosX), cos(viewPositionY) * cos(tmpViewPosX), 0, 0,0,0,1});
 
 
         // If middle mouse is down, shift viewTarget (OFFSET):
@@ -653,27 +685,30 @@ int main(int argc, char** argv)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Calculate aspect ratio (might be used for perspective transformation):
-        float aspectRatio = float(display_w) / display_h;
+        float aspectRatio = float(resultWidth) / resultHeight;
 
         // Ensure that both sides of the triangle are rendered:
         glDisable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
 
         // Get projection matrix:
-        Mat4f projection = Mat4f::perspectiveTransformation(aspectRatio, 45);
+        Mat4f projection = Mat4f::perspectiveTransformation(aspectRatio, float(fov));
 
         // Generate the view matrix by using the rotation matrix and translate the camera
         // by the distance to the scene mid point:
         Mat4f view = Mat4f::translation(0, 0, viewDistance) * rotationMat * Mat4f::translation(-viewTarget.x, -viewTarget.y, -viewTarget.z);
+
 
         // Render all the objects in the scene:
         {
             if(pcRenderer != nullptr)
                 pcRenderer->render(projection, view);
         }
-
         // End measuring time:
         // glEndQuery(GL_TIME_ELAPSED);
+
+
+
 
         // Copy to avoid memory issues in the following for loop (when new processed point cloud is set
         // by another thread):

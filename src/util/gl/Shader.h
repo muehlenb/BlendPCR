@@ -1,5 +1,6 @@
-// © 2023, CGVR (https://cgvr.informatik.uni-bremen.de/),
-// Author: Andre Mühlenbrock (muehlenb@uni-bremen.de)
+// © 2025, CGVR (https://cgvr.informatik.uni-bremen.de/),
+// Adapted from the Shadow-free Deformable Projection project.
+// Author: Andre Mühlenbrock (muehlenb@uni-bremen.de), Yaroslav Purgin.
 
 // Include this file only once when compiling:
 #pragma once
@@ -7,26 +8,57 @@
 // Include utility to open files during runtime:
 #include <fstream>
 #include <iostream>
-
-#include <unordered_map>
+#include <filesystem>
 
 // Include string:
 #include <string>
+#include <unordered_map>
 
 // Include Mat4f (and Vec4f):
-#include <Mat4.h>
+#include <util/math/Mat4.h>
 
 /**
  * This is a wrapper class for shader programs in OpenGL.
  */
 
 class Shader {
+private:
+    struct ShaderFile {
+        std::string path;
+        std::filesystem::file_time_type lastModifiedTime;
+
+        ShaderFile(const std::string path, const std::filesystem::file_time_type lastModifiedTime)
+            : path(path)
+            , lastModifiedTime(lastModifiedTime)
+        {}
+    };
+
+    std::vector<ShaderFile> shaderFiles;
+
+    /**
+     * Checks if any of the files have been changed and should be reloaded.
+     */
+    void hotReloadCheck();
+
+    /**
+     * Loads the shaders from the given paths and creates the shader program.
+     */
+    void createShaderProgram(std::string vertexShaderPath, std::string fragmentShaderPath, std::string geometryShaderPath = "");
+
+    /**
+     * Replaces #include "file_path" with the content of the file_path.
+     */
+    void processIncludes(std::string& sourceCode);
+
 public:
     /** Stores the ID of the shader program on the GPU */
     unsigned int shaderProgram;
 
     /** Is set to true in the constructor if initialization worked: */
     bool initialized = false;
+
+    /** Folder path to the vertex shader, is automatically set */
+    std::string folderPath;
 
     // Copy counter (This is needed for correct creation and deletion
     // of shaderProgram on GPU, since C++ copies objects on reassignment,
@@ -41,7 +73,6 @@ public:
     /** Stores the location of uniform names */
     std::unordered_map<std::string, int>* uniformLocationMap = nullptr;
 
-public:
     /**
      * Loads the source code of the given file paths, compiles it on the
      * GPU and stores the reference (=id, =name) to the program in the

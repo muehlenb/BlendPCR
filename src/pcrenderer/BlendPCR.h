@@ -4,8 +4,6 @@
 
 #include "src/pcrenderer/Renderer.h"
 
-#include "src/util/gl/TextureFBO.h"
-#include "src/util/gl/Texture2D.h"
 #include "src/util/gl/Shader.h"
 
 using namespace std::chrono;
@@ -19,6 +17,14 @@ using namespace std::chrono;
 #define LOOKUP_IMAGE_SIZE 1024
 
 class BlendPCR : public Renderer {
+public:
+    int result_width = 1920;
+    int result_height = 1080;
+    int screensNumber = 1;
+    bool makeScreenShot = false;
+    int screenshotID = 0;
+
+private:
     std::vector<std::shared_ptr<OrganizedPointCloud>> currentPointClouds;
 
     bool isInitialized = false;
@@ -83,6 +89,11 @@ class BlendPCR : public Renderer {
     unsigned int texture2D_cameraWeightsA; // Camera 0-3
     unsigned int texture2D_cameraWeightsB; // Camera 4-7
 
+    unsigned int fbo_result[10];
+    unsigned int texture2D_resultColor[10];
+    unsigned int texture2D_resultDepth[10];
+
+
     int fbo_screen_width = -1;
     int fbo_screen_height = -1;
 
@@ -115,7 +126,7 @@ class BlendPCR : public Renderer {
     /**
      * Define all the shaders for the screen passes:
      */
-    Shader renderShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.frag", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.geo");
+    Shader renderShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/separateRendering.frag");
     Shader majorCamShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/majorCam.frag");
     Shader cameraWeightsShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/cameraWeights.frag");
     Shader blendingShader = Shader(CMAKE_SOURCE_DIR "/shader/blendpcr/screen/blending.vert", CMAKE_SOURCE_DIR "/shader/blendpcr/screen/blending.frag");
@@ -219,54 +230,9 @@ class BlendPCR : public Renderer {
         }
     };
 
+
     void initMesh(){
         glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-
-        int c = 0;
-
-        indicesSize = CAMERA_IMAGE_WIDTH * CAMERA_IMAGE_HEIGHT * 6;
-        indices = new unsigned int[indicesSize * 6];
-
-        for(unsigned int h=0; h < CAMERA_IMAGE_HEIGHT - 1; ++h){
-            for(unsigned int w=0; w < CAMERA_IMAGE_WIDTH - 1; ++w){
-
-                indices[c++] = w + h * CAMERA_IMAGE_WIDTH;
-                indices[c++] = w + (h+1) * CAMERA_IMAGE_WIDTH;
-                indices[c++] = (w+1) + (h+1) * CAMERA_IMAGE_WIDTH;
-
-                indices[c++] = (w+1) + (h+1) * CAMERA_IMAGE_WIDTH;
-                indices[c++] = (w+1) + h * CAMERA_IMAGE_WIDTH;
-                indices[c++] = w + h * CAMERA_IMAGE_WIDTH;
-            }
-        }
-
-        glGenBuffers(1, &VBO_indices);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize * sizeof(unsigned int), &indices[0], GL_DYNAMIC_DRAW);
-
-        // Generate Grid Vertices:
-        {
-            gridData = new float[CAMERA_IMAGE_WIDTH * CAMERA_IMAGE_HEIGHT * 3];
-            for(int h = 0; h < CAMERA_IMAGE_HEIGHT; ++h){
-                for(int w = 0; w < CAMERA_IMAGE_WIDTH; ++w){
-                    float x = (w / (float)CAMERA_IMAGE_WIDTH);
-                    float y = (h / (float)CAMERA_IMAGE_HEIGHT);
-
-                    int i = w + h * CAMERA_IMAGE_WIDTH;
-
-                    gridData[i*3] = x;
-                    gridData[i*3+1] = y;
-                    gridData[i*3+2] = 2;
-                }
-            }
-        }
-
-        glGenBuffers(1, &VBO_pc);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_pc);
-        glBufferData(GL_ARRAY_BUFFER, CAMERA_IMAGE_WIDTH * CAMERA_IMAGE_HEIGHT * 3 * sizeof(GLfloat), gridData, GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(0);
     }
 
     void init(){
@@ -274,7 +240,7 @@ class BlendPCR : public Renderer {
         glGetIntegerv(GL_VIEWPORT, mainViewport);
 
         // If screen size changed:
-        if(mainViewport[2] != fbo_screen_width || mainViewport[3] != fbo_screen_height){
+        if(result_width != fbo_screen_width || result_height != fbo_screen_height){
             for(unsigned int cameraID = 0; cameraID < CAMERA_COUNT; ++cameraID){
                 // Delete old frame buffer + texture:
                 if(fbo_screen_width != -1){
@@ -292,23 +258,33 @@ class BlendPCR : public Renderer {
                     glGenFramebuffers(1, &fbo_screen[cameraID]);
                     glBindFramebuffer(GL_FRAMEBUFFER, fbo_screen[cameraID]);
 
-                    generateAndBind2DTexture(texture2D_screenColor[cameraID], mainViewport[2], mainViewport[3], GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST);
+                    generateAndBind2DTexture(texture2D_screenColor[cameraID], result_width, result_height, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST);
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_screenColor[cameraID], 0);
 
-                    generateAndBind2DTexture(texture2D_screenVertices[cameraID], mainViewport[2], mainViewport[3], GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
+                    generateAndBind2DTexture(texture2D_screenVertices[cameraID], result_width, result_height, GL_RGBA32F, GL_RGBA, GL_FLOAT, GL_NEAREST);
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2D_screenVertices[cameraID], 0);
 
-                    generateAndBind2DTexture(texture2D_screenNormals[cameraID], mainViewport[2], mainViewport[3], GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_NEAREST);
+                    generateAndBind2DTexture(texture2D_screenNormals[cameraID], result_width, result_height, GL_RGBA16F, GL_RGBA, GL_FLOAT, GL_NEAREST);
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, texture2D_screenNormals[cameraID], 0);
 
-                    generateAndBind2DTexture(texture2D_screenDepth[cameraID], mainViewport[2], mainViewport[3], GL_DEPTH_COMPONENT32, GL_DEPTH_COMPONENT, GL_FLOAT, GL_NEAREST);
+                    generateAndBind2DTexture(texture2D_screenDepth[cameraID], result_width, result_height, GL_DEPTH_COMPONENT32, GL_DEPTH_COMPONENT, GL_FLOAT, GL_NEAREST);
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture2D_screenDepth[cameraID], 0);
-
                 }
             }
 
-            fbo_screen_width = mainViewport[2];
-            fbo_screen_height = mainViewport[3];
+            for(unsigned int screenID = 0; screenID < screensNumber; ++screenID){
+                glGenFramebuffers(1, &fbo_result[screenID]);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_result[screenID]);
+
+                generateAndBind2DTexture(texture2D_resultColor[screenID], result_width, result_height, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_NEAREST);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2D_resultColor[screenID], 0);
+
+                generateAndBind2DTexture(texture2D_resultDepth[screenID], result_width, result_height, GL_DEPTH_COMPONENT32, GL_DEPTH_COMPONENT, GL_FLOAT, GL_NEAREST);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture2D_resultDepth[screenID], 0);
+            }
+
+            fbo_screen_width = result_width;
+            fbo_screen_height = result_height;
 
             // Delete old frame buffer + texture:
             if(fbo_mini_screen_width != -1){
@@ -320,8 +296,8 @@ class BlendPCR : public Renderer {
                 glDeleteTextures(1, &texture2D_cameraWeightsB);
             }
 
-            int requestedMiniScreenWidth = mainViewport[2] / 4;
-            int requestedMiniScreenHeight = mainViewport[3] / 4;
+            int requestedMiniScreenWidth = result_width / 4;
+            int requestedMiniScreenHeight =result_height / 4;
 
 
             glGenFramebuffers(1, &fbo_majorCam);
@@ -369,13 +345,10 @@ class BlendPCR : public Renderer {
             {
                 // Input point cloud texture
                 generateAndBind2DTexture(texture2D_inputDepth[cameraID], imageWidth, imageHeight, GL_R16UI, GL_RED_INTEGER, GL_UNSIGNED_SHORT, GL_NEAREST);
-
-                // Input color texture
                 generateAndBind2DTexture(texture2D_inputRGB[cameraID], imageWidth, imageHeight, GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, GL_LINEAR);
 
                 // Input lookup table
                 generateAndBind2DTexture(texture2D_inputLookupImageTo3D[cameraID], imageWidth, imageHeight, GL_RG32F, GL_RG, GL_FLOAT, GL_NEAREST);
-
                 generateAndBind2DTexture(texture2D_inputLookup3DToImage[cameraID], LOOKUP_IMAGE_SIZE, LOOKUP_IMAGE_SIZE, GL_RG32F, GL_RG, GL_FLOAT, GL_LINEAR);
             }
 
@@ -505,7 +478,9 @@ public:
     Vec4f clipMin = Vec4f(-1.0f, 0.05f, -1.0, 0.0);
     Vec4f clipMax = Vec4f(1.0f, 2.0f, 1.0, 0.0);
 
-    float implicitH = 0.01f;
+    int stride = 1;
+
+    float implicitH = 0.08f;
     float kernelRadius = 4.f;
     float kernelSpread = 1.f;
 
@@ -561,6 +536,12 @@ public:
 
             glDeleteFramebuffers(1, &fbo_qualityEstimate[cameraID]);
             glDeleteTextures(1, &texture2D_qualityEstimate[cameraID]);
+        }
+
+        for(int screenID = 0; screenID < screensNumber; ++screenID){
+            glDeleteFramebuffers(1, &fbo_result[screenID]);
+            glDeleteTextures(1, &texture2D_resultColor[screenID]);
+            glDeleteTextures(1, &texture2D_resultDepth[screenID]);
         }
 
         delete[] indices;
@@ -635,7 +616,6 @@ public:
         //startTimeMeasure("1) UploadTextures");
 
         auto time = high_resolution_clock::now();
-
 
         if(newPointCloudsAvailable){
             newPointCloudsAvailable = false;
@@ -884,208 +864,239 @@ public:
         uploadTime = duration_cast<microseconds>(time2 - time).count() / 1000.f;
 
 
-        startTimeMeasure("4a) RenderMesh", true);
-        // Restore viewport for screen rendering:
-        glViewport(0, 0, mainViewport[2], mainViewport[3]);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        // Just for switching for paper images:
-        // bool merge = GlobalStateHandler::instance().rightBarViewModel()->debug_showRays();
-
-        glDisable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-
-        // Now we render all meshes of each depth camera to a framebuffer:
-        for(unsigned int cameraID : cameraIDsThatCanBeRendered){
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo_screen[cameraID]);
-
-            // Draw out point cloud and color texture:
-            unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
-            glDrawBuffers(3, attachments);
-
-            float clearColor[4] = {0.0, 0.0, 0.0, 0.0};
-            glClear(GL_DEPTH_BUFFER_BIT);
-            glClearBufferfv(GL_COLOR, 0, clearColor);
-            glClearBufferfv(GL_COLOR, 1, clearColor);
-
-            renderShader.bind();
-            renderShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
-            renderShader.setUniform("view", view);
-            renderShader.setUniform("projection", projection);
-            renderShader.setUniform("useColorIndices", useColorIndices);
-
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
-            renderShader.setUniform("texture2D_colors", 2);
-
-            glActiveTexture(GL_TEXTURE3);
-            // pointCloudTexture->bind(gl);
-            glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
-            renderShader.setUniform("texture2D_vertices", 3);
-
-            glActiveTexture(GL_TEXTURE4);
-            glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
-            renderShader.setUniform("texture2D_edgeProximity", 4);
-
-            glActiveTexture(GL_TEXTURE5);
-            glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
-            renderShader.setUniform("texture2D_normals", 5);
-
-            glActiveTexture(GL_TEXTURE6);
-            glBindTexture(GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID]);
-            renderShader.setUniform("texture2D_qualityEstimate", 6);
-
-            glActiveTexture(GL_TEXTURE7);
-            glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
-            renderShader.setUniform("highResTexture", 7);
-
-            //gl.glEnable(GL_CULL_FACE);
-            //gl.glPolygonMode( GL_FRONT_AND_BACK, GL_LINE  );
-            glBindVertexArray(VAO);
-            glDrawElements(GL_TRIANGLES, indicesSize,  GL_UNSIGNED_INT, NULL);
-            glBindVertexArray(0);
-            //gl.glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-
-            glDrawBuffers(1, attachments);
-            //gl.glDisable(GL_CULL_FACE);
-        }
-        endTimeMeasure("4a) RenderMesh", true);
-
-        startTimeMeasure("4b) MajorCam", true);
-        glDisable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
-
-        // MiniScreen:
-        {
-            glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo_majorCam);
-            majorCamShader.bind();
-
-            unsigned int currentTexture = 1;
-            for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
-                majorCamShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
-
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
-                majorCamShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
-
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
-                majorCamShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
-
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
-                majorCamShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
-            }
-
-            for(int i=0; i < CAMERA_COUNT; ++i){
-                majorCamShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
-            }
-
-            majorCamShader.setUniform("view", view);
-
-            majorCamShader.setUniform("useFusion", useFusion);
-            majorCamShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
-
-            glBindVertexArray(VAO_quad);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-        endTimeMeasure("4b) MajorCam", true);
-
-        startTimeMeasure("4c) CamWeights", true);
-        {
-            glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraWeights);
-            cameraWeightsShader.bind();
-
-            unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-            glDrawBuffers(2, attachments);
-
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, texture2D_majorCam);
-            cameraWeightsShader.setUniform("dominanceTexture", 1);
-
-            for(int i=0; i < CAMERA_COUNT; ++i){
-                cameraWeightsShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
-            }
-
-            glBindVertexArray(VAO_quad);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-        endTimeMeasure("4c) CamWeights", true);
-
-        startTimeMeasure("4d) ScreenMerging", true);
-        // Screen Merging:
-        {
-            glViewport(mainViewport[0], mainViewport[1], mainViewport[2], mainViewport[3]);
+        for(int screenID = 0; screenID < screensNumber; ++screenID){
+            // Restore viewport for screen rendering:
+            glViewport(0, 0, result_width, result_height);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-            unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
-            glDrawBuffers(1, attachments);
+            // Just for switching for paper images:
+            // bool merge = GlobalStateHandler::instance().rightBarViewModel()->debug_showRays();
 
-            blendingShader.bind();
+            glDisable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
 
-            unsigned int currentTexture = 1;
-            for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
-                blendingShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
+            // Now we render all meshes of each depth camera to a framebuffer:
+            for(unsigned int cameraID : cameraIDsThatCanBeRendered){
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_screen[cameraID]);
 
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
-                blendingShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
+                // Draw out point cloud and color texture:
+                unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
+                glDrawBuffers(3, attachments);
 
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
-                blendingShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
+                float clearColor[4] = {0.0, 0.0, 0.0, 0.0};
+                glClear(GL_DEPTH_BUFFER_BIT);
+                glClearBufferfv(GL_COLOR, 0, clearColor);
+                glClearBufferfv(GL_COLOR, 1, clearColor);
 
-                glActiveTexture(GL_TEXTURE0 + currentTexture);
-                glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
-                blendingShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
-                ++currentTexture;
+                renderShader.bind();
+                renderShader.setUniform("model", currentPointClouds[cameraID]->modelMatrix);
+
+                if(screenID == 0){
+                    renderShader.setUniform("view", Mat4f::translation(-0.03f,0.f,0.f) * view);
+                } else {
+                    renderShader.setUniform("view", Mat4f::translation(0.03f,0.f,0.f) * view);
+                }
+                renderShader.setUniform("projection", projection);
+                renderShader.setUniform("useColorIndices", useColorIndices);
+
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, useReimplementedFilters ?  texture2D_pcf_holeFilledRGB[cameraID] : texture2D_inputRGB[cameraID]);
+                renderShader.setUniform("texture2D_colors", 2);
+
+                glActiveTexture(GL_TEXTURE3);
+                // pointCloudTexture->bind(gl);
+                glBindTexture(GL_TEXTURE_2D, texture2D_mlsVertices[cameraID]);
+                renderShader.setUniform("texture2D_vertices", 3);
+
+                glActiveTexture(GL_TEXTURE4);
+                glBindTexture(GL_TEXTURE_2D, texture2D_edgeProximity[cameraID]);
+                renderShader.setUniform("texture2D_edgeProximity", 4);
+
+                glActiveTexture(GL_TEXTURE5);
+                glBindTexture(GL_TEXTURE_2D, texture2D_normals[cameraID]);
+                renderShader.setUniform("texture2D_normals", 5);
+
+                glActiveTexture(GL_TEXTURE6);
+                glBindTexture(GL_TEXTURE_2D, texture2D_qualityEstimate[cameraID]);
+                renderShader.setUniform("texture2D_qualityEstimate", 6);
+
+                glActiveTexture(GL_TEXTURE7);
+                glBindTexture(GL_TEXTURE_2D, highres_colors[cameraID]);
+                renderShader.setUniform("highResTexture", 7);
+
+                //glBindVertexArray(VAO);
+                //glDrawElements(GL_TRIANGLES, indicesSize,  GL_UNSIGNED_INT, NULL);
+                //glBindVertexArray(0);
+
+                /*
+                glBindVertexArray(VAO);
+                int instances = (CAMERA_IMAGE_WIDTH - 1) * (CAMERA_IMAGE_HEIGHT - 1); // Anzahl der Zellen
+                glDrawArraysInstanced(
+                    GL_TRIANGLES, // Primitive
+                    0,            // Startindex
+                    6,            // 6 Vertices pro Zelle (2 Dreiecke)
+                    instances     // Anzahl Zellen
+                    );
+                glBindVertexArray(0);
+    */
+
+                glBindVertexArray(VAO);
+                int gridW = CAMERA_IMAGE_WIDTH;
+                int gridH = CAMERA_IMAGE_HEIGHT;
+                int cellsX = (gridW - 1) / stride;
+                int cellsY = (gridH - 1) / stride;
+
+
+                renderShader.setUniform("stride", stride);
+
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 6, cellsX * cellsY);
+                glBindVertexArray(0);
+
+                glDrawBuffers(1, attachments);
             }
+            endTimeMeasure("4a) RenderMesh", true);
 
-            glActiveTexture(GL_TEXTURE0 + currentTexture);
-            glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsA);
-            blendingShader.setUniform("miniWeightsA", int(currentTexture));
-            ++currentTexture;
+            startTimeMeasure("4b) MajorCam", true);
+            glDisable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
 
-            glActiveTexture(GL_TEXTURE0 + currentTexture);
-            glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsB);
-            blendingShader.setUniform("miniWeightsB", int(currentTexture));
-            ++currentTexture;
+            // MiniScreen:
+            {
+                glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_majorCam);
+                majorCamShader.bind();
 
-            for(int i=0; i < CAMERA_COUNT; ++i){
-                blendingShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                unsigned int currentTexture = 1;
+                for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
+                    majorCamShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
+                    majorCamShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
+                    majorCamShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
+                    majorCamShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+                }
+
+                for(int i=0; i < CAMERA_COUNT; ++i){
+                    majorCamShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                }
+
+                majorCamShader.setUniform("view", view);
+
+                majorCamShader.setUniform("useFusion", useFusion);
+                majorCamShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
+
+                glBindVertexArray(VAO_quad);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
             }
+            endTimeMeasure("4b) MajorCam", true);
 
-            blendingShader.setUniform("view", view);
+            startTimeMeasure("4c) CamWeights", true);
+            {
+                glViewport(0, 0, fbo_mini_screen_width, fbo_mini_screen_height);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_cameraWeights);
+                cameraWeightsShader.bind();
 
-            // Lighting
-            Vec4f lightPos[4] = {Vec4f(1.5f, 1.5f, 1.5f), Vec4f(-1.5f, 1.5f, 1.5f), Vec4f(-1.5f, 1.5f, -1.5f), Vec4f(1.5f, 1.5f, -1.5f)};
-            Vec4f lightColors[4] = {Vec4f(0.5f, 0.75f, 1.0f), Vec4f(1.0f, 0.75f, 0.5f), Vec4f(0.5f, 0.75f, 1.0f), Vec4f(1.0f, 0.75f, 0.5f)};
+                unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+                glDrawBuffers(2, attachments);
 
-            for(int i=0; i < 4; ++i){
-                blendingShader.setUniform("lights["+std::to_string(i)+"].position", view * lightPos[i]);
-                blendingShader.setUniform("lights["+std::to_string(i)+"].intensity", lightColors[i]);
-                blendingShader.setUniform("lights["+std::to_string(i)+"].range", 10.f);
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, texture2D_majorCam);
+                cameraWeightsShader.setUniform("dominanceTexture", 1);
+
+                for(int i=0; i < CAMERA_COUNT; ++i){
+                    cameraWeightsShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                }
+
+                glBindVertexArray(VAO_quad);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
             }
+            endTimeMeasure("4c) CamWeights", true);
 
-            blendingShader.setUniform("useFusion", useFusion);
-            blendingShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
+            startTimeMeasure("4d) ScreenMerging", true);
+            // Screen Merging:
+            {
+                glViewport(0, 0, result_width, result_height);
+                glBindFramebuffer(GL_FRAMEBUFFER, fbo_result[screenID]);
 
-            glBindVertexArray(VAO_quad);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+                glClearColor(0.5f,0.5f,0.5f,0.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
+                glDrawBuffers(1, attachments);
+
+                blendingShader.bind();
+
+                unsigned int currentTexture = 1;
+                for(unsigned int cameraIDOfTexture : cameraIDsThatCanBeRendered){
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenColor[cameraIDOfTexture]);
+                    blendingShader.setUniform("color["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenVertices[cameraIDOfTexture]);
+                    blendingShader.setUniform("vertices["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenNormals[cameraIDOfTexture]);
+                    blendingShader.setUniform("normals["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+
+                    glActiveTexture(GL_TEXTURE0 + currentTexture);
+                    glBindTexture(GL_TEXTURE_2D, texture2D_screenDepth[cameraIDOfTexture]);
+                    blendingShader.setUniform("depth["+std::to_string(cameraIDOfTexture)+"]", int(currentTexture));
+                    ++currentTexture;
+                }
+
+                glActiveTexture(GL_TEXTURE0 + currentTexture);
+                glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsA);
+                blendingShader.setUniform("miniWeightsA", int(currentTexture));
+                ++currentTexture;
+
+                glActiveTexture(GL_TEXTURE0 + currentTexture);
+                glBindTexture(GL_TEXTURE_2D, texture2D_cameraWeightsB);
+                blendingShader.setUniform("miniWeightsB", int(currentTexture));
+                ++currentTexture;
+
+                for(int i=0; i < CAMERA_COUNT; ++i){
+                    blendingShader.setUniform("isCameraActive["+std::to_string(i)+"]", isCameraActive[i]);
+                }
+
+                blendingShader.setUniform("view", view);
+
+                blendingShader.setUniform("useFusion", useFusion);
+                blendingShader.setUniform("cameraVector", view.inverse() * Vec4f(0.0, 0.0, 1.0, 0.0));
+
+                glBindVertexArray(VAO_quad);
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+
+                int mainVPWidth = mainViewport[2];
+
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_result[screenID]);
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                glBlitFramebuffer(0, 0, result_width, result_height, mainViewport[0] + (mainVPWidth / screensNumber) * screenID, mainViewport[1], mainViewport[0] + (mainVPWidth / screensNumber) * screenID + (mainVPWidth / screensNumber), mainViewport[3],  GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+            }
         }
+
+
+        glViewport(mainViewport[0], mainViewport[1], mainViewport[2], mainViewport[3]);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
         endTimeMeasure("4d) ScreenMerging", true);
 
         GLint maxCombinedTextureImageUnits;
