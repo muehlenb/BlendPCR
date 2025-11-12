@@ -120,11 +120,11 @@ You can switch between following rendering techniques:
 <sub>1: Note that both Pointersect and P2ENet are rendered from slightly different perspectives and use slightly different preprossesing filters (in terms of erosion & hole filling). Both renderings are taken from the Supplemental Material of *HU Y., GONG R., SUN Q., WANG Y.: Low latency point cloud rendering with learned splatting. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops (June 2024), pp. 5752–5761*.</sub>
 
 ### Performance
-The performance in default configuration for different numbers of cameras, divided by point cloud passes and screen passes on an NVIDIA GeForce RTX 4090 using a resolution of 3580 x 2066.
+The performance in default configuration for different numbers of cameras, divided by point cloud passes and screen passes on an NVIDIA GeForce RTX 4090 using a resolution of 3840 × 2160 (please note that these plots differ from the benchmarks in the paper, as they include performance optimizations implemented in this repository option).
 
-![image](https://cgvr.cs.uni-bremen.de/papers/icategve24/images/performance_cameras.jpg)
+![image](images/performance_new.png)
 
-For further details, see [our paper](https://diglib.eg.org/handle/10.2312/egve20241366) .
+Measurements are given for the default BlendPCR version. The BlendPCR (HR) version adds approximately 16 ms of runtime (for seven cameras) due to the upload of high-resolution textures to the GPU. For further details, see [our paper](https://diglib.eg.org/handle/10.2312/egve20241366).
 
 ## Cite
 ```
