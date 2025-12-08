@@ -6,8 +6,6 @@ C++/OpenGL implementation of our real-time renderer BlendPCR for dynamic point c
 [Andre Mühlenbrock¹](https://orcid.org/0000-0002-7836-3341), [Rene Weller¹](https://orcid.org/0009-0002-2544-4153), [Gabriel Zachmann¹](https://orcid.org/0000-0001-8155-1127)\
 ¹Computer Graphics and Virtual Reality Research Lab ([CGVR](https://cgvr.cs.uni-bremen.de/)), University of Bremen
 
-Presented at ICAT-EGVE 2024 **(Best Paper Award)**
-
 ![image](images/teaser.jpg)
 
 ## Updates
@@ -127,6 +125,7 @@ The performance in default configuration for different numbers of cameras, divid
 Measurements are given for the default BlendPCR version. The BlendPCR (HR) version adds approximately 16 ms of runtime (for seven cameras) due to the upload of high-resolution textures to the GPU. For further details, see [our paper](https://diglib.eg.org/handle/10.2312/egve20241366).
 
 ## Cite
+This work was presented at ICAT-EGVE 2024. If you use this code, please cite:
 ```
 @inproceedings{10.2312:egve.20241366,
     booktitle = {ICAT-EGVE 2024 - International Conference on Artificial Reality and Telexistence and Eurographics Symposium on Virtual Environments},
